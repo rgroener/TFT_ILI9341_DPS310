@@ -1,0 +1,4905 @@
+   1               		.file	"ili9341.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   7               		.text
+   8               	.Ltext0:
+   9               		.cfi_sections	.debug_frame
+  10               	.global	ili9341_hard_init
+  12               	ili9341_hard_init:
+  13               	.LFB7:
+  14               		.file 1 "ili9341.c"
+   1:ili9341.c     **** #include "ili9341.h"
+   2:ili9341.c     **** 
+   3:ili9341.c     **** volatile uint16_t LCD_W=ILI9341_TFTWIDTH;
+   4:ili9341.c     **** volatile uint16_t LCD_H=ILI9341_TFTHEIGHT;
+   5:ili9341.c     **** 
+   6:ili9341.c     **** #define _swap_int16_t(a, b) { int16_t t = a; a = b; b = t; }
+   7:ili9341.c     **** uint16_t _width = 320;
+   8:ili9341.c     **** uint16_t _height = 240;
+   9:ili9341.c     **** 
+  10:ili9341.c     **** 
+  11:ili9341.c     **** void ili9341_hard_init(void)//init hardware
+  12:ili9341.c     **** {
+  15               		.loc 1 12 0
+  16               		.cfi_startproc
+  17               	/* prologue: function */
+  18               	/* frame size = 0 */
+  19               	/* stack size = 0 */
+  20               	.L__stack_usage = 0
+  13:ili9341.c     **** rstddr=0xFF;//output for reset
+  21               		.loc 1 13 0
+  22 0000 8FEF      		ldi r24,lo8(-1)
+  23 0002 8AB9      		out 0xa,r24
+  14:ili9341.c     **** rstport |=(1<<rst);//pull high for normal operation
+  24               		.loc 1 14 0
+  25 0004 5F9A      		sbi 0xb,7
+  15:ili9341.c     **** controlddr|=(1<<dc);//D/C as output
+  26               		.loc 1 15 0
+  27 0006 209A      		sbi 0x4,0
+  28               	/* epilogue start */
+  16:ili9341.c     **** }
+  29               		.loc 1 16 0
+  30 0008 0895      		ret
+  31               		.cfi_endproc
+  32               	.LFE7:
+  34               	.global	ili9341_spi_init
+  36               	ili9341_spi_init:
+  37               	.LFB8:
+  17:ili9341.c     **** 
+  18:ili9341.c     **** 
+  19:ili9341.c     **** void ili9341_spi_init(void)//set spi speed and settings 
+  20:ili9341.c     **** {
+  38               		.loc 1 20 0
+  39               		.cfi_startproc
+  40               	/* prologue: function */
+  41               	/* frame size = 0 */
+  42               	/* stack size = 0 */
+  43               	.L__stack_usage = 0
+  21:ili9341.c     **** DDRB |=(1<<1)|(1<<2)|(1<<3)|(1<<5);//CS,SS,MOSI,SCK as output(although SS will be unused throughout
+  44               		.loc 1 21 0
+  45 000a 84B1      		in r24,0x4
+  46 000c 8E62      		ori r24,lo8(46)
+  47 000e 84B9      		out 0x4,r24
+  22:ili9341.c     **** SPCR=(1<<SPE)|(1<<MSTR);//mode 0,fosc/4
+  48               		.loc 1 22 0
+  49 0010 80E5      		ldi r24,lo8(80)
+  50 0012 8CBD      		out 0x2c,r24
+  23:ili9341.c     **** SPSR |=(1<<SPI2X);//doubling spi speed.i.e final spi speed-fosc/2
+  51               		.loc 1 23 0
+  52 0014 8DB5      		in r24,0x2d
+  53 0016 8160      		ori r24,lo8(1)
+  54 0018 8DBD      		out 0x2d,r24
+  24:ili9341.c     **** PORTB |=(1<<1);//cs off during startup
+  55               		.loc 1 24 0
+  56 001a 299A      		sbi 0x5,1
+  57               	/* epilogue start */
+  25:ili9341.c     **** 
+  26:ili9341.c     **** }
+  58               		.loc 1 26 0
+  59 001c 0895      		ret
+  60               		.cfi_endproc
+  61               	.LFE8:
+  63               	.global	ili9341_spi_send
+  65               	ili9341_spi_send:
+  66               	.LFB9:
+  27:ili9341.c     **** 
+  28:ili9341.c     **** 
+  29:ili9341.c     **** void ili9341_spi_send(unsigned char spi_data)//send spi data to display
+  30:ili9341.c     **** {
+  67               		.loc 1 30 0
+  68               		.cfi_startproc
+  69               	.LVL0:
+  70               	/* prologue: function */
+  71               	/* frame size = 0 */
+  72               	/* stack size = 0 */
+  73               	.L__stack_usage = 0
+  31:ili9341.c     **** SPDR=spi_data;//move data into spdr
+  74               		.loc 1 31 0
+  75 001e 8EBD      		out 0x2e,r24
+  76               	.L4:
+  32:ili9341.c     **** while(!(SPSR & (1<<SPIF)));//wait till the transmission is finished
+  77               		.loc 1 32 0 discriminator 1
+  78 0020 0DB4      		in __tmp_reg__,0x2d
+  79 0022 07FE      		sbrs __tmp_reg__,7
+  80 0024 00C0      		rjmp .L4
+  81               	/* epilogue start */
+  33:ili9341.c     **** }
+  82               		.loc 1 33 0
+  83 0026 0895      		ret
+  84               		.cfi_endproc
+  85               	.LFE9:
+  87               	.global	ili9341_writecommand8
+  89               	ili9341_writecommand8:
+  90               	.LFB10:
+  34:ili9341.c     **** 
+  35:ili9341.c     **** 
+  36:ili9341.c     **** void ili9341_writecommand8(uint8_t com)//command write
+  37:ili9341.c     **** {
+  91               		.loc 1 37 0
+  92               		.cfi_startproc
+  93               	.LVL1:
+  94               	/* prologue: function */
+  95               	/* frame size = 0 */
+  96               	/* stack size = 0 */
+  97               	.L__stack_usage = 0
+  38:ili9341.c     **** controlport &=~((1<<dc)|(1<<cs));//dc and cs both low to send command
+  98               		.loc 1 38 0
+  99 0028 95B1      		in r25,0x5
+ 100 002a 9C7F      		andi r25,lo8(-4)
+ 101 002c 95B9      		out 0x5,r25
+ 102               	.LVL2:
+ 103               	.LBB16:
+ 104               	.LBB17:
+ 105               		.file 2 "/usr/avr/include/util/delay.h"
+   1:/usr/avr/include/util/delay.h **** /* Copyright (c) 2002, Marek Michalkiewicz
+   2:/usr/avr/include/util/delay.h ****    Copyright (c) 2004,2005,2007 Joerg Wunsch
+   3:/usr/avr/include/util/delay.h ****    Copyright (c) 2007  Florin-Viorel Petrov
+   4:/usr/avr/include/util/delay.h ****    All rights reserved.
+   5:/usr/avr/include/util/delay.h **** 
+   6:/usr/avr/include/util/delay.h ****    Redistribution and use in source and binary forms, with or without
+   7:/usr/avr/include/util/delay.h ****    modification, are permitted provided that the following conditions are met:
+   8:/usr/avr/include/util/delay.h **** 
+   9:/usr/avr/include/util/delay.h ****    * Redistributions of source code must retain the above copyright
+  10:/usr/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer.
+  11:/usr/avr/include/util/delay.h **** 
+  12:/usr/avr/include/util/delay.h ****    * Redistributions in binary form must reproduce the above copyright
+  13:/usr/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer in
+  14:/usr/avr/include/util/delay.h ****      the documentation and/or other materials provided with the
+  15:/usr/avr/include/util/delay.h ****      distribution.
+  16:/usr/avr/include/util/delay.h **** 
+  17:/usr/avr/include/util/delay.h ****    * Neither the name of the copyright holders nor the names of
+  18:/usr/avr/include/util/delay.h ****      contributors may be used to endorse or promote products derived
+  19:/usr/avr/include/util/delay.h ****      from this software without specific prior written permission.
+  20:/usr/avr/include/util/delay.h **** 
+  21:/usr/avr/include/util/delay.h ****   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  22:/usr/avr/include/util/delay.h ****   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  23:/usr/avr/include/util/delay.h ****   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  24:/usr/avr/include/util/delay.h ****   ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  25:/usr/avr/include/util/delay.h ****   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  26:/usr/avr/include/util/delay.h ****   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  27:/usr/avr/include/util/delay.h ****   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  28:/usr/avr/include/util/delay.h ****   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  29:/usr/avr/include/util/delay.h ****   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  30:/usr/avr/include/util/delay.h ****   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  31:/usr/avr/include/util/delay.h ****   POSSIBILITY OF SUCH DAMAGE. */
+  32:/usr/avr/include/util/delay.h **** 
+  33:/usr/avr/include/util/delay.h **** /* $Id: delay.h.in 2506 2016-02-08 10:05:45Z joerg_wunsch $ */
+  34:/usr/avr/include/util/delay.h **** 
+  35:/usr/avr/include/util/delay.h **** #ifndef _UTIL_DELAY_H_
+  36:/usr/avr/include/util/delay.h **** #define _UTIL_DELAY_H_ 1
+  37:/usr/avr/include/util/delay.h **** 
+  38:/usr/avr/include/util/delay.h **** #ifndef __DOXYGEN__
+  39:/usr/avr/include/util/delay.h **** #  ifndef __HAS_DELAY_CYCLES
+  40:/usr/avr/include/util/delay.h **** #    define __HAS_DELAY_CYCLES 1
+  41:/usr/avr/include/util/delay.h **** #  endif
+  42:/usr/avr/include/util/delay.h **** #endif  /* __DOXYGEN__ */
+  43:/usr/avr/include/util/delay.h **** 
+  44:/usr/avr/include/util/delay.h **** #include <inttypes.h>
+  45:/usr/avr/include/util/delay.h **** #include <util/delay_basic.h>
+  46:/usr/avr/include/util/delay.h **** #include <math.h>
+  47:/usr/avr/include/util/delay.h **** 
+  48:/usr/avr/include/util/delay.h **** /** \file */
+  49:/usr/avr/include/util/delay.h **** /** \defgroup util_delay <util/delay.h>: Convenience functions for busy-wait delay loops
+  50:/usr/avr/include/util/delay.h ****     \code
+  51:/usr/avr/include/util/delay.h ****     #define F_CPU 1000000UL  // 1 MHz
+  52:/usr/avr/include/util/delay.h ****     //#define F_CPU 14.7456E6
+  53:/usr/avr/include/util/delay.h ****     #include <util/delay.h>
+  54:/usr/avr/include/util/delay.h ****     \endcode
+  55:/usr/avr/include/util/delay.h **** 
+  56:/usr/avr/include/util/delay.h ****     \note As an alternative method, it is possible to pass the
+  57:/usr/avr/include/util/delay.h ****     F_CPU macro down to the compiler from the Makefile.
+  58:/usr/avr/include/util/delay.h ****     Obviously, in that case, no \c \#define statement should be
+  59:/usr/avr/include/util/delay.h ****     used.
+  60:/usr/avr/include/util/delay.h **** 
+  61:/usr/avr/include/util/delay.h ****     The functions in this header file are wrappers around the basic
+  62:/usr/avr/include/util/delay.h ****     busy-wait functions from <util/delay_basic.h>.  They are meant as
+  63:/usr/avr/include/util/delay.h ****     convenience functions where actual time values can be specified
+  64:/usr/avr/include/util/delay.h ****     rather than a number of cycles to wait for.  The idea behind is
+  65:/usr/avr/include/util/delay.h ****     that compile-time constant expressions will be eliminated by
+  66:/usr/avr/include/util/delay.h ****     compiler optimization so floating-point expressions can be used
+  67:/usr/avr/include/util/delay.h ****     to calculate the number of delay cycles needed based on the CPU
+  68:/usr/avr/include/util/delay.h ****     frequency passed by the macro F_CPU.
+  69:/usr/avr/include/util/delay.h **** 
+  70:/usr/avr/include/util/delay.h ****     \note In order for these functions to work as intended, compiler
+  71:/usr/avr/include/util/delay.h ****     optimizations <em>must</em> be enabled, and the delay time
+  72:/usr/avr/include/util/delay.h ****     <em>must</em> be an expression that is a known constant at
+  73:/usr/avr/include/util/delay.h ****     compile-time.  If these requirements are not met, the resulting
+  74:/usr/avr/include/util/delay.h ****     delay will be much longer (and basically unpredictable), and
+  75:/usr/avr/include/util/delay.h ****     applications that otherwise do not use floating-point calculations
+  76:/usr/avr/include/util/delay.h ****     will experience severe code bloat by the floating-point library
+  77:/usr/avr/include/util/delay.h ****     routines linked into the application.
+  78:/usr/avr/include/util/delay.h **** 
+  79:/usr/avr/include/util/delay.h ****     The functions available allow the specification of microsecond, and
+  80:/usr/avr/include/util/delay.h ****     millisecond delays directly, using the application-supplied macro
+  81:/usr/avr/include/util/delay.h ****     F_CPU as the CPU clock frequency (in Hertz).
+  82:/usr/avr/include/util/delay.h **** 
+  83:/usr/avr/include/util/delay.h **** */
+  84:/usr/avr/include/util/delay.h **** 
+  85:/usr/avr/include/util/delay.h **** #if !defined(__DOXYGEN__)
+  86:/usr/avr/include/util/delay.h **** static __inline__ void _delay_us(double __us) __attribute__((__always_inline__));
+  87:/usr/avr/include/util/delay.h **** static __inline__ void _delay_ms(double __ms) __attribute__((__always_inline__));
+  88:/usr/avr/include/util/delay.h **** #endif
+  89:/usr/avr/include/util/delay.h **** 
+  90:/usr/avr/include/util/delay.h **** #ifndef F_CPU
+  91:/usr/avr/include/util/delay.h **** /* prevent compiler error by supplying a default */
+  92:/usr/avr/include/util/delay.h **** # warning "F_CPU not defined for <util/delay.h>"
+  93:/usr/avr/include/util/delay.h **** /** \ingroup util_delay
+  94:/usr/avr/include/util/delay.h ****     \def F_CPU
+  95:/usr/avr/include/util/delay.h ****     \brief CPU frequency in Hz
+  96:/usr/avr/include/util/delay.h **** 
+  97:/usr/avr/include/util/delay.h ****     The macro F_CPU specifies the CPU frequency to be considered by
+  98:/usr/avr/include/util/delay.h ****     the delay macros.  This macro is normally supplied by the
+  99:/usr/avr/include/util/delay.h ****     environment (e.g. from within a project header, or the project's
+ 100:/usr/avr/include/util/delay.h ****     Makefile).  The value 1 MHz here is only provided as a "vanilla"
+ 101:/usr/avr/include/util/delay.h ****     fallback if no such user-provided definition could be found.
+ 102:/usr/avr/include/util/delay.h **** 
+ 103:/usr/avr/include/util/delay.h ****     In terms of the delay functions, the CPU frequency can be given as
+ 104:/usr/avr/include/util/delay.h ****     a floating-point constant (e.g. 3.6864E6 for 3.6864 MHz).
+ 105:/usr/avr/include/util/delay.h ****     However, the macros in <util/setbaud.h> require it to be an
+ 106:/usr/avr/include/util/delay.h ****     integer value.
+ 107:/usr/avr/include/util/delay.h ****  */
+ 108:/usr/avr/include/util/delay.h **** # define F_CPU 1000000UL
+ 109:/usr/avr/include/util/delay.h **** #endif
+ 110:/usr/avr/include/util/delay.h **** 
+ 111:/usr/avr/include/util/delay.h **** #ifndef __OPTIMIZE__
+ 112:/usr/avr/include/util/delay.h **** # warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+ 113:/usr/avr/include/util/delay.h **** #endif
+ 114:/usr/avr/include/util/delay.h **** 
+ 115:/usr/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 116:/usr/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 117:/usr/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 118:/usr/avr/include/util/delay.h **** #  include <math.h>
+ 119:/usr/avr/include/util/delay.h **** #endif
+ 120:/usr/avr/include/util/delay.h **** 
+ 121:/usr/avr/include/util/delay.h **** /**
+ 122:/usr/avr/include/util/delay.h ****    \ingroup util_delay
+ 123:/usr/avr/include/util/delay.h **** 
+ 124:/usr/avr/include/util/delay.h ****    Perform a delay of \c __ms milliseconds, using _delay_loop_2().
+ 125:/usr/avr/include/util/delay.h **** 
+ 126:/usr/avr/include/util/delay.h ****    The macro F_CPU is supposed to be defined to a
+ 127:/usr/avr/include/util/delay.h ****    constant defining the CPU clock frequency (in Hertz).
+ 128:/usr/avr/include/util/delay.h **** 
+ 129:/usr/avr/include/util/delay.h ****    The maximal possible delay is 262.14 ms / F_CPU in MHz.
+ 130:/usr/avr/include/util/delay.h **** 
+ 131:/usr/avr/include/util/delay.h ****    When the user request delay which exceed the maximum possible one,
+ 132:/usr/avr/include/util/delay.h ****    _delay_ms() provides a decreased resolution functionality. In this
+ 133:/usr/avr/include/util/delay.h ****    mode _delay_ms() will work with a resolution of 1/10 ms, providing
+ 134:/usr/avr/include/util/delay.h ****    delays up to 6.5535 seconds (independent from CPU frequency).  The
+ 135:/usr/avr/include/util/delay.h ****    user will not be informed about decreased resolution.
+ 136:/usr/avr/include/util/delay.h **** 
+ 137:/usr/avr/include/util/delay.h ****    If the avr-gcc toolchain has __builtin_avr_delay_cycles()
+ 138:/usr/avr/include/util/delay.h ****    support, maximal possible delay is 4294967.295 ms/ F_CPU in MHz. For
+ 139:/usr/avr/include/util/delay.h ****    values greater than the maximal possible delay, overflows results in
+ 140:/usr/avr/include/util/delay.h ****    no delay i.e., 0ms.
+ 141:/usr/avr/include/util/delay.h **** 
+ 142:/usr/avr/include/util/delay.h ****    Conversion of \c __ms into clock cycles may not always result in
+ 143:/usr/avr/include/util/delay.h ****    integer.  By default, the clock cycles rounded up to next
+ 144:/usr/avr/include/util/delay.h ****    integer. This ensures that the user gets at least \c __ms
+ 145:/usr/avr/include/util/delay.h ****    microseconds of delay.
+ 146:/usr/avr/include/util/delay.h **** 
+ 147:/usr/avr/include/util/delay.h ****    Alternatively, by defining the macro \c __DELAY_ROUND_DOWN__, or
+ 148:/usr/avr/include/util/delay.h ****    \c __DELAY_ROUND_CLOSEST__, before including this header file, the
+ 149:/usr/avr/include/util/delay.h ****    algorithm can be made to round down, or round to closest integer,
+ 150:/usr/avr/include/util/delay.h ****    respectively.
+ 151:/usr/avr/include/util/delay.h **** 
+ 152:/usr/avr/include/util/delay.h ****    \note
+ 153:/usr/avr/include/util/delay.h **** 
+ 154:/usr/avr/include/util/delay.h ****    The implementation of _delay_ms() based on
+ 155:/usr/avr/include/util/delay.h ****    __builtin_avr_delay_cycles() is not backward compatible with older
+ 156:/usr/avr/include/util/delay.h ****    implementations.  In order to get functionality backward compatible
+ 157:/usr/avr/include/util/delay.h ****    with previous versions, the macro \c "__DELAY_BACKWARD_COMPATIBLE__"
+ 158:/usr/avr/include/util/delay.h ****    must be defined before including this header file. Also, the
+ 159:/usr/avr/include/util/delay.h ****    backward compatible algorithm will be chosen if the code is
+ 160:/usr/avr/include/util/delay.h ****    compiled in a <em>freestanding environment</em> (GCC option
+ 161:/usr/avr/include/util/delay.h ****    \c -ffreestanding), as the math functions required for rounding are
+ 162:/usr/avr/include/util/delay.h ****    not available to the compiler then.
+ 163:/usr/avr/include/util/delay.h **** 
+ 164:/usr/avr/include/util/delay.h ****  */
+ 165:/usr/avr/include/util/delay.h **** void
+ 166:/usr/avr/include/util/delay.h **** _delay_ms(double __ms)
+ 167:/usr/avr/include/util/delay.h **** {
+ 168:/usr/avr/include/util/delay.h **** 	double __tmp ;
+ 169:/usr/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 170:/usr/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 171:/usr/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 172:/usr/avr/include/util/delay.h **** 	uint32_t __ticks_dc;
+ 173:/usr/avr/include/util/delay.h **** 	extern void __builtin_avr_delay_cycles(unsigned long);
+ 174:/usr/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 1e3) * __ms;
+ 175:/usr/avr/include/util/delay.h **** 
+ 176:/usr/avr/include/util/delay.h **** 	#if defined(__DELAY_ROUND_DOWN__)
+ 177:/usr/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)fabs(__tmp);
+ 178:/usr/avr/include/util/delay.h **** 
+ 179:/usr/avr/include/util/delay.h **** 	#elif defined(__DELAY_ROUND_CLOSEST__)
+ 180:/usr/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(fabs(__tmp)+0.5);
+ 181:/usr/avr/include/util/delay.h **** 
+ 182:/usr/avr/include/util/delay.h **** 	#else
+ 183:/usr/avr/include/util/delay.h **** 		//round up by default
+ 184:/usr/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+ 185:/usr/avr/include/util/delay.h **** 	#endif
+ 186:/usr/avr/include/util/delay.h **** 
+ 187:/usr/avr/include/util/delay.h **** 	__builtin_avr_delay_cycles(__ticks_dc);
+ 188:/usr/avr/include/util/delay.h **** 
+ 189:/usr/avr/include/util/delay.h **** #else
+ 190:/usr/avr/include/util/delay.h **** 	uint16_t __ticks;
+ 191:/usr/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 4e3) * __ms;
+ 192:/usr/avr/include/util/delay.h **** 	if (__tmp < 1.0)
+ 193:/usr/avr/include/util/delay.h **** 		__ticks = 1;
+ 194:/usr/avr/include/util/delay.h **** 	else if (__tmp > 65535)
+ 195:/usr/avr/include/util/delay.h **** 	{
+ 196:/usr/avr/include/util/delay.h **** 		//	__ticks = requested delay in 1/10 ms
+ 197:/usr/avr/include/util/delay.h **** 		__ticks = (uint16_t) (__ms * 10.0);
+ 198:/usr/avr/include/util/delay.h **** 		while(__ticks)
+ 199:/usr/avr/include/util/delay.h **** 		{
+ 200:/usr/avr/include/util/delay.h **** 			// wait 1/10 ms
+ 201:/usr/avr/include/util/delay.h **** 			_delay_loop_2(((F_CPU) / 4e3) / 10);
+ 202:/usr/avr/include/util/delay.h **** 			__ticks --;
+ 203:/usr/avr/include/util/delay.h **** 		}
+ 204:/usr/avr/include/util/delay.h **** 		return;
+ 205:/usr/avr/include/util/delay.h **** 	}
+ 206:/usr/avr/include/util/delay.h **** 	else
+ 207:/usr/avr/include/util/delay.h **** 		__ticks = (uint16_t)__tmp;
+ 208:/usr/avr/include/util/delay.h **** 	_delay_loop_2(__ticks);
+ 209:/usr/avr/include/util/delay.h **** #endif
+ 210:/usr/avr/include/util/delay.h **** }
+ 211:/usr/avr/include/util/delay.h **** 
+ 212:/usr/avr/include/util/delay.h **** /**
+ 213:/usr/avr/include/util/delay.h ****    \ingroup util_delay
+ 214:/usr/avr/include/util/delay.h **** 
+ 215:/usr/avr/include/util/delay.h ****    Perform a delay of \c __us microseconds, using _delay_loop_1().
+ 216:/usr/avr/include/util/delay.h **** 
+ 217:/usr/avr/include/util/delay.h ****    The macro F_CPU is supposed to be defined to a
+ 218:/usr/avr/include/util/delay.h ****    constant defining the CPU clock frequency (in Hertz).
+ 219:/usr/avr/include/util/delay.h **** 
+ 220:/usr/avr/include/util/delay.h ****    The maximal possible delay is 768 us / F_CPU in MHz.
+ 221:/usr/avr/include/util/delay.h **** 
+ 222:/usr/avr/include/util/delay.h ****    If the user requests a delay greater than the maximal possible one,
+ 223:/usr/avr/include/util/delay.h ****    _delay_us() will automatically call _delay_ms() instead.  The user
+ 224:/usr/avr/include/util/delay.h ****    will not be informed about this case.
+ 225:/usr/avr/include/util/delay.h **** 
+ 226:/usr/avr/include/util/delay.h ****    If the avr-gcc toolchain has __builtin_avr_delay_cycles()
+ 227:/usr/avr/include/util/delay.h ****    support, maximal possible delay is 4294967.295 us/ F_CPU in MHz. For
+ 228:/usr/avr/include/util/delay.h ****    values greater than the maximal possible delay, overflow results in
+ 229:/usr/avr/include/util/delay.h ****    no delay i.e., 0us.
+ 230:/usr/avr/include/util/delay.h **** 
+ 231:/usr/avr/include/util/delay.h ****    Conversion of \c __us into clock cycles may not always result in
+ 232:/usr/avr/include/util/delay.h ****    integer.  By default, the clock cycles rounded up to next
+ 233:/usr/avr/include/util/delay.h ****    integer. This ensures that the user gets at least \c __us
+ 234:/usr/avr/include/util/delay.h ****    microseconds of delay.
+ 235:/usr/avr/include/util/delay.h **** 
+ 236:/usr/avr/include/util/delay.h ****    Alternatively, by defining the macro \c __DELAY_ROUND_DOWN__, or
+ 237:/usr/avr/include/util/delay.h ****    \c __DELAY_ROUND_CLOSEST__, before including this header file, the
+ 238:/usr/avr/include/util/delay.h ****    algorithm can be made to round down, or round to closest integer,
+ 239:/usr/avr/include/util/delay.h ****    respectively.
+ 240:/usr/avr/include/util/delay.h **** 
+ 241:/usr/avr/include/util/delay.h ****    \note
+ 242:/usr/avr/include/util/delay.h **** 
+ 243:/usr/avr/include/util/delay.h ****    The implementation of _delay_ms() based on
+ 244:/usr/avr/include/util/delay.h ****    __builtin_avr_delay_cycles() is not backward compatible with older
+ 245:/usr/avr/include/util/delay.h ****    implementations.  In order to get functionality backward compatible
+ 246:/usr/avr/include/util/delay.h ****    with previous versions, the macro \c __DELAY_BACKWARD_COMPATIBLE__
+ 247:/usr/avr/include/util/delay.h ****    must be defined before including this header file. Also, the
+ 248:/usr/avr/include/util/delay.h ****    backward compatible algorithm will be chosen if the code is
+ 249:/usr/avr/include/util/delay.h ****    compiled in a <em>freestanding environment</em> (GCC option
+ 250:/usr/avr/include/util/delay.h ****    \c -ffreestanding), as the math functions required for rounding are
+ 251:/usr/avr/include/util/delay.h ****    not available to the compiler then.
+ 252:/usr/avr/include/util/delay.h **** 
+ 253:/usr/avr/include/util/delay.h ****  */
+ 254:/usr/avr/include/util/delay.h **** void
+ 255:/usr/avr/include/util/delay.h **** _delay_us(double __us)
+ 256:/usr/avr/include/util/delay.h **** {
+ 257:/usr/avr/include/util/delay.h **** 	double __tmp ;
+ 258:/usr/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 259:/usr/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 260:/usr/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 261:/usr/avr/include/util/delay.h **** 	uint32_t __ticks_dc;
+ 262:/usr/avr/include/util/delay.h **** 	extern void __builtin_avr_delay_cycles(unsigned long);
+ 263:/usr/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 1e6) * __us;
+ 264:/usr/avr/include/util/delay.h **** 
+ 265:/usr/avr/include/util/delay.h **** 	#if defined(__DELAY_ROUND_DOWN__)
+ 266:/usr/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)fabs(__tmp);
+ 267:/usr/avr/include/util/delay.h **** 
+ 268:/usr/avr/include/util/delay.h **** 	#elif defined(__DELAY_ROUND_CLOSEST__)
+ 269:/usr/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(fabs(__tmp)+0.5);
+ 270:/usr/avr/include/util/delay.h **** 
+ 271:/usr/avr/include/util/delay.h **** 	#else
+ 272:/usr/avr/include/util/delay.h **** 		//round up by default
+ 273:/usr/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+ 274:/usr/avr/include/util/delay.h **** 	#endif
+ 275:/usr/avr/include/util/delay.h **** 
+ 276:/usr/avr/include/util/delay.h **** 	__builtin_avr_delay_cycles(__ticks_dc);
+ 106               		.loc 2 276 0
+ 107 002e 9AE1      		ldi r25,lo8(26)
+ 108 0030 9A95      	1:	dec r25
+ 109 0032 01F4      		brne 1b
+ 110 0034 00C0      		rjmp .
+ 111               	.LVL3:
+ 112               	.LBE17:
+ 113               	.LBE16:
+  39:ili9341.c     **** _delay_us(5);//little delay
+  40:ili9341.c     **** ili9341_spi_send(com);
+ 114               		.loc 1 40 0
+ 115 0036 0E94 0000 		call ili9341_spi_send
+ 116               	.LVL4:
+  41:ili9341.c     **** controlport |=(1<<cs);//pull high cs
+ 117               		.loc 1 41 0
+ 118 003a 299A      		sbi 0x5,1
+ 119               	/* epilogue start */
+  42:ili9341.c     **** }
+ 120               		.loc 1 42 0
+ 121 003c 0895      		ret
+ 122               		.cfi_endproc
+ 123               	.LFE10:
+ 125               	.global	ili9341_writedata8
+ 127               	ili9341_writedata8:
+ 128               	.LFB11:
+  43:ili9341.c     **** 
+  44:ili9341.c     **** 
+  45:ili9341.c     **** void ili9341_writedata8(uint8_t data)//data write
+  46:ili9341.c     **** {
+ 129               		.loc 1 46 0
+ 130               		.cfi_startproc
+ 131               	.LVL5:
+ 132               	/* prologue: function */
+ 133               	/* frame size = 0 */
+ 134               	/* stack size = 0 */
+ 135               	.L__stack_usage = 0
+  47:ili9341.c     **** controlport |=(1<<dc);//st dc high for data
+ 136               		.loc 1 47 0
+ 137 003e 289A      		sbi 0x5,0
+ 138               	.LVL6:
+ 139               	.LBB18:
+ 140               	.LBB19:
+ 141               		.loc 2 276 0
+ 142 0040 95E0      		ldi r25,lo8(5)
+ 143 0042 9A95      	1:	dec r25
+ 144 0044 01F4      		brne 1b
+ 145 0046 0000      		nop
+ 146               	.LVL7:
+ 147               	.LBE19:
+ 148               	.LBE18:
+  48:ili9341.c     **** _delay_us(1);//delay
+  49:ili9341.c     **** controlport &=~(1<<cs);//set cs low for operation
+ 149               		.loc 1 49 0
+ 150 0048 2998      		cbi 0x5,1
+  50:ili9341.c     **** ili9341_spi_send(data);
+ 151               		.loc 1 50 0
+ 152 004a 0E94 0000 		call ili9341_spi_send
+ 153               	.LVL8:
+  51:ili9341.c     **** controlport |=(1<<cs);
+ 154               		.loc 1 51 0
+ 155 004e 299A      		sbi 0x5,1
+ 156               	/* epilogue start */
+  52:ili9341.c     **** }
+ 157               		.loc 1 52 0
+ 158 0050 0895      		ret
+ 159               		.cfi_endproc
+ 160               	.LFE11:
+ 162               	.global	ili9341_setaddress
+ 164               	ili9341_setaddress:
+ 165               	.LFB12:
+  53:ili9341.c     **** 
+  54:ili9341.c     **** 
+  55:ili9341.c     **** void ili9341_setaddress(uint16_t x1,uint16_t y1,uint16_t x2,uint16_t y2)//set coordinate for print 
+  56:ili9341.c     **** {
+ 166               		.loc 1 56 0
+ 167               		.cfi_startproc
+ 168               	.LVL9:
+ 169 0052 DF92      		push r13
+ 170               	.LCFI0:
+ 171               		.cfi_def_cfa_offset 3
+ 172               		.cfi_offset 13, -2
+ 173 0054 EF92      		push r14
+ 174               	.LCFI1:
+ 175               		.cfi_def_cfa_offset 4
+ 176               		.cfi_offset 14, -3
+ 177 0056 FF92      		push r15
+ 178               	.LCFI2:
+ 179               		.cfi_def_cfa_offset 5
+ 180               		.cfi_offset 15, -4
+ 181 0058 0F93      		push r16
+ 182               	.LCFI3:
+ 183               		.cfi_def_cfa_offset 6
+ 184               		.cfi_offset 16, -5
+ 185 005a 1F93      		push r17
+ 186               	.LCFI4:
+ 187               		.cfi_def_cfa_offset 7
+ 188               		.cfi_offset 17, -6
+ 189 005c CF93      		push r28
+ 190               	.LCFI5:
+ 191               		.cfi_def_cfa_offset 8
+ 192               		.cfi_offset 28, -7
+ 193 005e DF93      		push r29
+ 194               	.LCFI6:
+ 195               		.cfi_def_cfa_offset 9
+ 196               		.cfi_offset 29, -8
+ 197               	/* prologue: function */
+ 198               	/* frame size = 0 */
+ 199               	/* stack size = 7 */
+ 200               	.L__stack_usage = 7
+ 201 0060 E82E      		mov r14,r24
+ 202 0062 D92E      		mov r13,r25
+ 203 0064 D62F      		mov r29,r22
+ 204 0066 172F      		mov r17,r23
+ 205 0068 042F      		mov r16,r20
+ 206 006a F52E      		mov r15,r21
+ 207 006c C22F      		mov r28,r18
+  57:ili9341.c     **** ili9341_writecommand8(0x2A);
+ 208               		.loc 1 57 0
+ 209 006e 8AE2      		ldi r24,lo8(42)
+ 210               	.LVL10:
+ 211 0070 0E94 0000 		call ili9341_writecommand8
+ 212               	.LVL11:
+  58:ili9341.c     **** ili9341_writedata8(x1>>8);
+ 213               		.loc 1 58 0
+ 214 0074 8D2D      		mov r24,r13
+ 215 0076 0E94 0000 		call ili9341_writedata8
+ 216               	.LVL12:
+  59:ili9341.c     **** ili9341_writedata8(x1);
+ 217               		.loc 1 59 0
+ 218 007a 8E2D      		mov r24,r14
+ 219 007c 0E94 0000 		call ili9341_writedata8
+ 220               	.LVL13:
+  60:ili9341.c     **** ili9341_writedata8(x2>>8);
+ 221               		.loc 1 60 0
+ 222 0080 8F2D      		mov r24,r15
+ 223 0082 0E94 0000 		call ili9341_writedata8
+ 224               	.LVL14:
+  61:ili9341.c     **** ili9341_writedata8(x2);
+ 225               		.loc 1 61 0
+ 226 0086 802F      		mov r24,r16
+ 227 0088 0E94 0000 		call ili9341_writedata8
+ 228               	.LVL15:
+  62:ili9341.c     **** 
+  63:ili9341.c     **** ili9341_writecommand8(0x2B);
+ 229               		.loc 1 63 0
+ 230 008c 8BE2      		ldi r24,lo8(43)
+ 231 008e 0E94 0000 		call ili9341_writecommand8
+ 232               	.LVL16:
+  64:ili9341.c     **** ili9341_writedata8(y1>>8);
+ 233               		.loc 1 64 0
+ 234 0092 812F      		mov r24,r17
+ 235 0094 0E94 0000 		call ili9341_writedata8
+ 236               	.LVL17:
+  65:ili9341.c     **** ili9341_writedata8(y1);
+ 237               		.loc 1 65 0
+ 238 0098 8D2F      		mov r24,r29
+ 239 009a 0E94 0000 		call ili9341_writedata8
+ 240               	.LVL18:
+  66:ili9341.c     **** ili9341_writedata8(y2);
+ 241               		.loc 1 66 0
+ 242 009e 8C2F      		mov r24,r28
+ 243 00a0 0E94 0000 		call ili9341_writedata8
+ 244               	.LVL19:
+  67:ili9341.c     **** ili9341_writedata8(y2);
+ 245               		.loc 1 67 0
+ 246 00a4 8C2F      		mov r24,r28
+ 247 00a6 0E94 0000 		call ili9341_writedata8
+ 248               	.LVL20:
+  68:ili9341.c     **** 
+  69:ili9341.c     **** ili9341_writecommand8(0x2C);//meory write
+ 249               		.loc 1 69 0
+ 250 00aa 8CE2      		ldi r24,lo8(44)
+ 251               	/* epilogue start */
+  70:ili9341.c     **** }
+ 252               		.loc 1 70 0
+ 253 00ac DF91      		pop r29
+ 254 00ae CF91      		pop r28
+ 255 00b0 1F91      		pop r17
+ 256 00b2 0F91      		pop r16
+ 257 00b4 FF90      		pop r15
+ 258 00b6 EF90      		pop r14
+ 259 00b8 DF90      		pop r13
+  69:ili9341.c     **** }
+ 260               		.loc 1 69 0
+ 261 00ba 0C94 0000 		jmp ili9341_writecommand8
+ 262               	.LVL21:
+ 263               		.cfi_endproc
+ 264               	.LFE12:
+ 266               	.global	ili9341_hard_reset
+ 268               	ili9341_hard_reset:
+ 269               	.LFB13:
+  71:ili9341.c     **** 
+  72:ili9341.c     **** 
+  73:ili9341.c     **** void ili9341_hard_reset(void)//hard reset display
+  74:ili9341.c     **** {
+ 270               		.loc 1 74 0
+ 271               		.cfi_startproc
+ 272               	/* prologue: function */
+ 273               	/* frame size = 0 */
+ 274               	/* stack size = 0 */
+ 275               	.L__stack_usage = 0
+  75:ili9341.c     **** rstport |=(1<<rst);//pull high if low previously
+ 276               		.loc 1 75 0
+ 277 00be 5F9A      		sbi 0xb,7
+ 278               	.LVL22:
+ 279               	.LBB20:
+ 280               	.LBB21:
+ 187:/usr/avr/include/util/delay.h **** 
+ 281               		.loc 2 187 0
+ 282 00c0 2FEF      		ldi r18,lo8(639999)
+ 283 00c2 83EC      		ldi r24,hi8(639999)
+ 284 00c4 99E0      		ldi r25,hlo8(639999)
+ 285 00c6 2150      	1:	subi r18,1
+ 286 00c8 8040      		sbci r24,0
+ 287 00ca 9040      		sbci r25,0
+ 288 00cc 01F4      		brne 1b
+ 289 00ce 00C0      		rjmp .
+ 290 00d0 0000      		nop
+ 291               	.LVL23:
+ 292               	.LBE21:
+ 293               	.LBE20:
+  76:ili9341.c     **** _delay_ms(200);
+  77:ili9341.c     **** rstport &=~(1<<rst);//low for reset
+ 294               		.loc 1 77 0
+ 295 00d2 5F98      		cbi 0xb,7
+ 296               	.LVL24:
+ 297               	.LBB22:
+ 298               	.LBB23:
+ 187:/usr/avr/include/util/delay.h **** 
+ 299               		.loc 2 187 0
+ 300 00d4 2FEF      		ldi r18,lo8(639999)
+ 301 00d6 83EC      		ldi r24,hi8(639999)
+ 302 00d8 99E0      		ldi r25,hlo8(639999)
+ 303 00da 2150      	1:	subi r18,1
+ 304 00dc 8040      		sbci r24,0
+ 305 00de 9040      		sbci r25,0
+ 306 00e0 01F4      		brne 1b
+ 307 00e2 00C0      		rjmp .
+ 308 00e4 0000      		nop
+ 309               	.LVL25:
+ 310               	.LBE23:
+ 311               	.LBE22:
+  78:ili9341.c     **** _delay_ms(200);
+  79:ili9341.c     **** rstport |=(1<<rst);//again pull high for normal operation
+ 312               		.loc 1 79 0
+ 313 00e6 5F9A      		sbi 0xb,7
+ 314               	.LVL26:
+ 315               	.LBB24:
+ 316               	.LBB25:
+ 187:/usr/avr/include/util/delay.h **** 
+ 317               		.loc 2 187 0
+ 318 00e8 2FEF      		ldi r18,lo8(639999)
+ 319 00ea 83EC      		ldi r24,hi8(639999)
+ 320 00ec 99E0      		ldi r25,hlo8(639999)
+ 321 00ee 2150      	1:	subi r18,1
+ 322 00f0 8040      		sbci r24,0
+ 323 00f2 9040      		sbci r25,0
+ 324 00f4 01F4      		brne 1b
+ 325 00f6 00C0      		rjmp .
+ 326 00f8 0000      		nop
+ 327               	.LVL27:
+ 328               	/* epilogue start */
+ 329               	.LBE25:
+ 330               	.LBE24:
+  80:ili9341.c     **** _delay_ms(200);
+  81:ili9341.c     **** }
+ 331               		.loc 1 81 0
+ 332 00fa 0895      		ret
+ 333               		.cfi_endproc
+ 334               	.LFE13:
+ 336               	.global	ili9341_init
+ 338               	ili9341_init:
+ 339               	.LFB14:
+  82:ili9341.c     **** 
+  83:ili9341.c     **** 
+  84:ili9341.c     **** void ili9341_init(void)//set up display using predefined command sequence
+  85:ili9341.c     **** {
+ 340               		.loc 1 85 0
+ 341               		.cfi_startproc
+ 342               	/* prologue: function */
+ 343               	/* frame size = 0 */
+ 344               	/* stack size = 0 */
+ 345               	.L__stack_usage = 0
+  86:ili9341.c     **** ili9341_hard_init();
+ 346               		.loc 1 86 0
+ 347 00fc 0E94 0000 		call ili9341_hard_init
+ 348               	.LVL28:
+  87:ili9341.c     **** ili9341_spi_init();
+ 349               		.loc 1 87 0
+ 350 0100 0E94 0000 		call ili9341_spi_init
+ 351               	.LVL29:
+  88:ili9341.c     **** ili9341_hard_reset();
+ 352               		.loc 1 88 0
+ 353 0104 0E94 0000 		call ili9341_hard_reset
+ 354               	.LVL30:
+  89:ili9341.c     **** ili9341_writecommand8(0x01);//soft reset
+ 355               		.loc 1 89 0
+ 356 0108 81E0      		ldi r24,lo8(1)
+ 357 010a 0E94 0000 		call ili9341_writecommand8
+ 358               	.LVL31:
+ 359               	.LBB26:
+ 360               	.LBB27:
+ 187:/usr/avr/include/util/delay.h **** 
+ 361               		.loc 2 187 0
+ 362 010e 2FEF      		ldi r18,lo8(3199999)
+ 363 0110 83ED      		ldi r24,hi8(3199999)
+ 364 0112 90E3      		ldi r25,hlo8(3199999)
+ 365 0114 2150      	1:	subi r18,1
+ 366 0116 8040      		sbci r24,0
+ 367 0118 9040      		sbci r25,0
+ 368 011a 01F4      		brne 1b
+ 369 011c 00C0      		rjmp .
+ 370 011e 0000      		nop
+ 371               	.LVL32:
+ 372               	.LBE27:
+ 373               	.LBE26:
+  90:ili9341.c     **** _delay_ms(1000);
+  91:ili9341.c     **** //power control A
+  92:ili9341.c     **** ili9341_writecommand8(0xCB);
+ 374               		.loc 1 92 0
+ 375 0120 8BEC      		ldi r24,lo8(-53)
+ 376 0122 0E94 0000 		call ili9341_writecommand8
+ 377               	.LVL33:
+  93:ili9341.c     **** ili9341_writedata8(0x39);
+ 378               		.loc 1 93 0
+ 379 0126 89E3      		ldi r24,lo8(57)
+ 380 0128 0E94 0000 		call ili9341_writedata8
+ 381               	.LVL34:
+  94:ili9341.c     **** ili9341_writedata8(0x2C);
+ 382               		.loc 1 94 0
+ 383 012c 8CE2      		ldi r24,lo8(44)
+ 384 012e 0E94 0000 		call ili9341_writedata8
+ 385               	.LVL35:
+  95:ili9341.c     **** ili9341_writedata8(0x00);
+ 386               		.loc 1 95 0
+ 387 0132 80E0      		ldi r24,0
+ 388 0134 0E94 0000 		call ili9341_writedata8
+ 389               	.LVL36:
+  96:ili9341.c     **** ili9341_writedata8(0x34);
+ 390               		.loc 1 96 0
+ 391 0138 84E3      		ldi r24,lo8(52)
+ 392 013a 0E94 0000 		call ili9341_writedata8
+ 393               	.LVL37:
+  97:ili9341.c     **** ili9341_writedata8(0x02);
+ 394               		.loc 1 97 0
+ 395 013e 82E0      		ldi r24,lo8(2)
+ 396 0140 0E94 0000 		call ili9341_writedata8
+ 397               	.LVL38:
+  98:ili9341.c     **** 
+  99:ili9341.c     **** //power control B
+ 100:ili9341.c     **** ili9341_writecommand8(0xCF);
+ 398               		.loc 1 100 0
+ 399 0144 8FEC      		ldi r24,lo8(-49)
+ 400 0146 0E94 0000 		call ili9341_writecommand8
+ 401               	.LVL39:
+ 101:ili9341.c     **** ili9341_writedata8(0x00);
+ 402               		.loc 1 101 0
+ 403 014a 80E0      		ldi r24,0
+ 404 014c 0E94 0000 		call ili9341_writedata8
+ 405               	.LVL40:
+ 102:ili9341.c     **** ili9341_writedata8(0xC1);
+ 406               		.loc 1 102 0
+ 407 0150 81EC      		ldi r24,lo8(-63)
+ 408 0152 0E94 0000 		call ili9341_writedata8
+ 409               	.LVL41:
+ 103:ili9341.c     **** ili9341_writedata8(0x30);
+ 410               		.loc 1 103 0
+ 411 0156 80E3      		ldi r24,lo8(48)
+ 412 0158 0E94 0000 		call ili9341_writedata8
+ 413               	.LVL42:
+ 104:ili9341.c     **** 
+ 105:ili9341.c     **** //driver timing control A
+ 106:ili9341.c     **** ili9341_writecommand8(0xE8);
+ 414               		.loc 1 106 0
+ 415 015c 88EE      		ldi r24,lo8(-24)
+ 416 015e 0E94 0000 		call ili9341_writecommand8
+ 417               	.LVL43:
+ 107:ili9341.c     **** ili9341_writedata8(0x85);
+ 418               		.loc 1 107 0
+ 419 0162 85E8      		ldi r24,lo8(-123)
+ 420 0164 0E94 0000 		call ili9341_writedata8
+ 421               	.LVL44:
+ 108:ili9341.c     **** ili9341_writedata8(0x00);
+ 422               		.loc 1 108 0
+ 423 0168 80E0      		ldi r24,0
+ 424 016a 0E94 0000 		call ili9341_writedata8
+ 425               	.LVL45:
+ 109:ili9341.c     **** ili9341_writedata8(0x78);
+ 426               		.loc 1 109 0
+ 427 016e 88E7      		ldi r24,lo8(120)
+ 428 0170 0E94 0000 		call ili9341_writedata8
+ 429               	.LVL46:
+ 110:ili9341.c     **** 
+ 111:ili9341.c     **** //driver timing control B
+ 112:ili9341.c     **** ili9341_writecommand8(0xEA);
+ 430               		.loc 1 112 0
+ 431 0174 8AEE      		ldi r24,lo8(-22)
+ 432 0176 0E94 0000 		call ili9341_writecommand8
+ 433               	.LVL47:
+ 113:ili9341.c     **** ili9341_writedata8(0x00);
+ 434               		.loc 1 113 0
+ 435 017a 80E0      		ldi r24,0
+ 436 017c 0E94 0000 		call ili9341_writedata8
+ 437               	.LVL48:
+ 114:ili9341.c     **** ili9341_writedata8(0x00);
+ 438               		.loc 1 114 0
+ 439 0180 80E0      		ldi r24,0
+ 440 0182 0E94 0000 		call ili9341_writedata8
+ 441               	.LVL49:
+ 115:ili9341.c     **** 
+ 116:ili9341.c     **** //power on sequence control
+ 117:ili9341.c     **** ili9341_writecommand8(0xED);
+ 442               		.loc 1 117 0
+ 443 0186 8DEE      		ldi r24,lo8(-19)
+ 444 0188 0E94 0000 		call ili9341_writecommand8
+ 445               	.LVL50:
+ 118:ili9341.c     **** ili9341_writedata8(0x64);
+ 446               		.loc 1 118 0
+ 447 018c 84E6      		ldi r24,lo8(100)
+ 448 018e 0E94 0000 		call ili9341_writedata8
+ 449               	.LVL51:
+ 119:ili9341.c     **** ili9341_writedata8(0x03);
+ 450               		.loc 1 119 0
+ 451 0192 83E0      		ldi r24,lo8(3)
+ 452 0194 0E94 0000 		call ili9341_writedata8
+ 453               	.LVL52:
+ 120:ili9341.c     **** ili9341_writedata8(0x12);
+ 454               		.loc 1 120 0
+ 455 0198 82E1      		ldi r24,lo8(18)
+ 456 019a 0E94 0000 		call ili9341_writedata8
+ 457               	.LVL53:
+ 121:ili9341.c     **** ili9341_writedata8(0x81);
+ 458               		.loc 1 121 0
+ 459 019e 81E8      		ldi r24,lo8(-127)
+ 460 01a0 0E94 0000 		call ili9341_writedata8
+ 461               	.LVL54:
+ 122:ili9341.c     **** 
+ 123:ili9341.c     **** //pump ratio control
+ 124:ili9341.c     **** ili9341_writecommand8(0xF7);
+ 462               		.loc 1 124 0
+ 463 01a4 87EF      		ldi r24,lo8(-9)
+ 464 01a6 0E94 0000 		call ili9341_writecommand8
+ 465               	.LVL55:
+ 125:ili9341.c     **** ili9341_writedata8(0x20);
+ 466               		.loc 1 125 0
+ 467 01aa 80E2      		ldi r24,lo8(32)
+ 468 01ac 0E94 0000 		call ili9341_writedata8
+ 469               	.LVL56:
+ 126:ili9341.c     **** 
+ 127:ili9341.c     **** //power control,VRH[5:0]
+ 128:ili9341.c     **** ili9341_writecommand8(0xC0);
+ 470               		.loc 1 128 0
+ 471 01b0 80EC      		ldi r24,lo8(-64)
+ 472 01b2 0E94 0000 		call ili9341_writecommand8
+ 473               	.LVL57:
+ 129:ili9341.c     **** ili9341_writedata8(0x23);
+ 474               		.loc 1 129 0
+ 475 01b6 83E2      		ldi r24,lo8(35)
+ 476 01b8 0E94 0000 		call ili9341_writedata8
+ 477               	.LVL58:
+ 130:ili9341.c     **** 
+ 131:ili9341.c     **** //Power control,SAP[2:0];BT[3:0]
+ 132:ili9341.c     **** ili9341_writecommand8(0xC1);
+ 478               		.loc 1 132 0
+ 479 01bc 81EC      		ldi r24,lo8(-63)
+ 480 01be 0E94 0000 		call ili9341_writecommand8
+ 481               	.LVL59:
+ 133:ili9341.c     **** ili9341_writedata8(0x10);
+ 482               		.loc 1 133 0
+ 483 01c2 80E1      		ldi r24,lo8(16)
+ 484 01c4 0E94 0000 		call ili9341_writedata8
+ 485               	.LVL60:
+ 134:ili9341.c     **** 
+ 135:ili9341.c     **** //vcm control
+ 136:ili9341.c     **** ili9341_writecommand8(0xC5);
+ 486               		.loc 1 136 0
+ 487 01c8 85EC      		ldi r24,lo8(-59)
+ 488 01ca 0E94 0000 		call ili9341_writecommand8
+ 489               	.LVL61:
+ 137:ili9341.c     **** ili9341_writedata8(0x3E);
+ 490               		.loc 1 137 0
+ 491 01ce 8EE3      		ldi r24,lo8(62)
+ 492 01d0 0E94 0000 		call ili9341_writedata8
+ 493               	.LVL62:
+ 138:ili9341.c     **** ili9341_writedata8(0x28);
+ 494               		.loc 1 138 0
+ 495 01d4 88E2      		ldi r24,lo8(40)
+ 496 01d6 0E94 0000 		call ili9341_writedata8
+ 497               	.LVL63:
+ 139:ili9341.c     **** 
+ 140:ili9341.c     **** //vcm control 2
+ 141:ili9341.c     **** ili9341_writecommand8(0xC7);
+ 498               		.loc 1 141 0
+ 499 01da 87EC      		ldi r24,lo8(-57)
+ 500 01dc 0E94 0000 		call ili9341_writecommand8
+ 501               	.LVL64:
+ 142:ili9341.c     **** ili9341_writedata8(0x86);
+ 502               		.loc 1 142 0
+ 503 01e0 86E8      		ldi r24,lo8(-122)
+ 504 01e2 0E94 0000 		call ili9341_writedata8
+ 505               	.LVL65:
+ 143:ili9341.c     **** 
+ 144:ili9341.c     **** //memory access control
+ 145:ili9341.c     **** ili9341_writecommand8(0x36);
+ 506               		.loc 1 145 0
+ 507 01e6 86E3      		ldi r24,lo8(54)
+ 508 01e8 0E94 0000 		call ili9341_writecommand8
+ 509               	.LVL66:
+ 146:ili9341.c     **** ili9341_writedata8(0x48);
+ 510               		.loc 1 146 0
+ 511 01ec 88E4      		ldi r24,lo8(72)
+ 512 01ee 0E94 0000 		call ili9341_writedata8
+ 513               	.LVL67:
+ 147:ili9341.c     **** 
+ 148:ili9341.c     **** //pixel format
+ 149:ili9341.c     **** ili9341_writecommand8(0x3A);
+ 514               		.loc 1 149 0
+ 515 01f2 8AE3      		ldi r24,lo8(58)
+ 516 01f4 0E94 0000 		call ili9341_writecommand8
+ 517               	.LVL68:
+ 150:ili9341.c     **** ili9341_writedata8(0x55);
+ 518               		.loc 1 150 0
+ 519 01f8 85E5      		ldi r24,lo8(85)
+ 520 01fa 0E94 0000 		call ili9341_writedata8
+ 521               	.LVL69:
+ 151:ili9341.c     **** 
+ 152:ili9341.c     **** //frameration control,normal mode full colours
+ 153:ili9341.c     **** ili9341_writecommand8(0xB1);
+ 522               		.loc 1 153 0
+ 523 01fe 81EB      		ldi r24,lo8(-79)
+ 524 0200 0E94 0000 		call ili9341_writecommand8
+ 525               	.LVL70:
+ 154:ili9341.c     **** ili9341_writedata8(0x00);
+ 526               		.loc 1 154 0
+ 527 0204 80E0      		ldi r24,0
+ 528 0206 0E94 0000 		call ili9341_writedata8
+ 529               	.LVL71:
+ 155:ili9341.c     **** ili9341_writedata8(0x18);
+ 530               		.loc 1 155 0
+ 531 020a 88E1      		ldi r24,lo8(24)
+ 532 020c 0E94 0000 		call ili9341_writedata8
+ 533               	.LVL72:
+ 156:ili9341.c     **** 
+ 157:ili9341.c     **** //display function control
+ 158:ili9341.c     **** ili9341_writecommand8(0xB6);
+ 534               		.loc 1 158 0
+ 535 0210 86EB      		ldi r24,lo8(-74)
+ 536 0212 0E94 0000 		call ili9341_writecommand8
+ 537               	.LVL73:
+ 159:ili9341.c     **** ili9341_writedata8(0x08);
+ 538               		.loc 1 159 0
+ 539 0216 88E0      		ldi r24,lo8(8)
+ 540 0218 0E94 0000 		call ili9341_writedata8
+ 541               	.LVL74:
+ 160:ili9341.c     **** ili9341_writedata8(0x82);
+ 542               		.loc 1 160 0
+ 543 021c 82E8      		ldi r24,lo8(-126)
+ 544 021e 0E94 0000 		call ili9341_writedata8
+ 545               	.LVL75:
+ 161:ili9341.c     **** ili9341_writedata8(0x27);
+ 546               		.loc 1 161 0
+ 547 0222 87E2      		ldi r24,lo8(39)
+ 548 0224 0E94 0000 		call ili9341_writedata8
+ 549               	.LVL76:
+ 162:ili9341.c     **** 
+ 163:ili9341.c     **** //3gamma function disable
+ 164:ili9341.c     **** ili9341_writecommand8(0xF2);
+ 550               		.loc 1 164 0
+ 551 0228 82EF      		ldi r24,lo8(-14)
+ 552 022a 0E94 0000 		call ili9341_writecommand8
+ 553               	.LVL77:
+ 165:ili9341.c     **** ili9341_writedata8(0x00);
+ 554               		.loc 1 165 0
+ 555 022e 80E0      		ldi r24,0
+ 556 0230 0E94 0000 		call ili9341_writedata8
+ 557               	.LVL78:
+ 166:ili9341.c     **** 
+ 167:ili9341.c     **** //gamma curve selected
+ 168:ili9341.c     **** ili9341_writecommand8(0x26);
+ 558               		.loc 1 168 0
+ 559 0234 86E2      		ldi r24,lo8(38)
+ 560 0236 0E94 0000 		call ili9341_writecommand8
+ 561               	.LVL79:
+ 169:ili9341.c     **** ili9341_writedata8(0x01);
+ 562               		.loc 1 169 0
+ 563 023a 81E0      		ldi r24,lo8(1)
+ 564 023c 0E94 0000 		call ili9341_writedata8
+ 565               	.LVL80:
+ 170:ili9341.c     **** 
+ 171:ili9341.c     **** //set positive gamma correction
+ 172:ili9341.c     **** ili9341_writecommand8(0xE0);
+ 566               		.loc 1 172 0
+ 567 0240 80EE      		ldi r24,lo8(-32)
+ 568 0242 0E94 0000 		call ili9341_writecommand8
+ 569               	.LVL81:
+ 173:ili9341.c     **** ili9341_writedata8(0x0F);
+ 570               		.loc 1 173 0
+ 571 0246 8FE0      		ldi r24,lo8(15)
+ 572 0248 0E94 0000 		call ili9341_writedata8
+ 573               	.LVL82:
+ 174:ili9341.c     **** ili9341_writedata8(0x31);
+ 574               		.loc 1 174 0
+ 575 024c 81E3      		ldi r24,lo8(49)
+ 576 024e 0E94 0000 		call ili9341_writedata8
+ 577               	.LVL83:
+ 175:ili9341.c     **** ili9341_writedata8(0x2B);
+ 578               		.loc 1 175 0
+ 579 0252 8BE2      		ldi r24,lo8(43)
+ 580 0254 0E94 0000 		call ili9341_writedata8
+ 581               	.LVL84:
+ 176:ili9341.c     **** ili9341_writedata8(0x0C);
+ 582               		.loc 1 176 0
+ 583 0258 8CE0      		ldi r24,lo8(12)
+ 584 025a 0E94 0000 		call ili9341_writedata8
+ 585               	.LVL85:
+ 177:ili9341.c     **** ili9341_writedata8(0x0E);
+ 586               		.loc 1 177 0
+ 587 025e 8EE0      		ldi r24,lo8(14)
+ 588 0260 0E94 0000 		call ili9341_writedata8
+ 589               	.LVL86:
+ 178:ili9341.c     **** ili9341_writedata8(0x08);
+ 590               		.loc 1 178 0
+ 591 0264 88E0      		ldi r24,lo8(8)
+ 592 0266 0E94 0000 		call ili9341_writedata8
+ 593               	.LVL87:
+ 179:ili9341.c     **** ili9341_writedata8(0x4E);
+ 594               		.loc 1 179 0
+ 595 026a 8EE4      		ldi r24,lo8(78)
+ 596 026c 0E94 0000 		call ili9341_writedata8
+ 597               	.LVL88:
+ 180:ili9341.c     **** ili9341_writedata8(0xF1);
+ 598               		.loc 1 180 0
+ 599 0270 81EF      		ldi r24,lo8(-15)
+ 600 0272 0E94 0000 		call ili9341_writedata8
+ 601               	.LVL89:
+ 181:ili9341.c     **** ili9341_writedata8(0x37);
+ 602               		.loc 1 181 0
+ 603 0276 87E3      		ldi r24,lo8(55)
+ 604 0278 0E94 0000 		call ili9341_writedata8
+ 605               	.LVL90:
+ 182:ili9341.c     **** ili9341_writedata8(0x07);
+ 606               		.loc 1 182 0
+ 607 027c 87E0      		ldi r24,lo8(7)
+ 608 027e 0E94 0000 		call ili9341_writedata8
+ 609               	.LVL91:
+ 183:ili9341.c     **** ili9341_writedata8(0x10);
+ 610               		.loc 1 183 0
+ 611 0282 80E1      		ldi r24,lo8(16)
+ 612 0284 0E94 0000 		call ili9341_writedata8
+ 613               	.LVL92:
+ 184:ili9341.c     **** ili9341_writedata8(0x03);
+ 614               		.loc 1 184 0
+ 615 0288 83E0      		ldi r24,lo8(3)
+ 616 028a 0E94 0000 		call ili9341_writedata8
+ 617               	.LVL93:
+ 185:ili9341.c     **** ili9341_writedata8(0x0E);
+ 618               		.loc 1 185 0
+ 619 028e 8EE0      		ldi r24,lo8(14)
+ 620 0290 0E94 0000 		call ili9341_writedata8
+ 621               	.LVL94:
+ 186:ili9341.c     **** ili9341_writedata8(0x09);
+ 622               		.loc 1 186 0
+ 623 0294 89E0      		ldi r24,lo8(9)
+ 624 0296 0E94 0000 		call ili9341_writedata8
+ 625               	.LVL95:
+ 187:ili9341.c     **** ili9341_writedata8(0x00);
+ 626               		.loc 1 187 0
+ 627 029a 80E0      		ldi r24,0
+ 628 029c 0E94 0000 		call ili9341_writedata8
+ 629               	.LVL96:
+ 188:ili9341.c     **** 
+ 189:ili9341.c     **** //set negative gamma correction
+ 190:ili9341.c     **** ili9341_writecommand8(0xE1);
+ 630               		.loc 1 190 0
+ 631 02a0 81EE      		ldi r24,lo8(-31)
+ 632 02a2 0E94 0000 		call ili9341_writecommand8
+ 633               	.LVL97:
+ 191:ili9341.c     **** ili9341_writedata8(0x00);
+ 634               		.loc 1 191 0
+ 635 02a6 80E0      		ldi r24,0
+ 636 02a8 0E94 0000 		call ili9341_writedata8
+ 637               	.LVL98:
+ 192:ili9341.c     **** ili9341_writedata8(0x0E);
+ 638               		.loc 1 192 0
+ 639 02ac 8EE0      		ldi r24,lo8(14)
+ 640 02ae 0E94 0000 		call ili9341_writedata8
+ 641               	.LVL99:
+ 193:ili9341.c     **** ili9341_writedata8(0x14);
+ 642               		.loc 1 193 0
+ 643 02b2 84E1      		ldi r24,lo8(20)
+ 644 02b4 0E94 0000 		call ili9341_writedata8
+ 645               	.LVL100:
+ 194:ili9341.c     **** ili9341_writedata8(0x03);
+ 646               		.loc 1 194 0
+ 647 02b8 83E0      		ldi r24,lo8(3)
+ 648 02ba 0E94 0000 		call ili9341_writedata8
+ 649               	.LVL101:
+ 195:ili9341.c     **** ili9341_writedata8(0x11);
+ 650               		.loc 1 195 0
+ 651 02be 81E1      		ldi r24,lo8(17)
+ 652 02c0 0E94 0000 		call ili9341_writedata8
+ 653               	.LVL102:
+ 196:ili9341.c     **** ili9341_writedata8(0x07);
+ 654               		.loc 1 196 0
+ 655 02c4 87E0      		ldi r24,lo8(7)
+ 656 02c6 0E94 0000 		call ili9341_writedata8
+ 657               	.LVL103:
+ 197:ili9341.c     **** ili9341_writedata8(0x31);
+ 658               		.loc 1 197 0
+ 659 02ca 81E3      		ldi r24,lo8(49)
+ 660 02cc 0E94 0000 		call ili9341_writedata8
+ 661               	.LVL104:
+ 198:ili9341.c     **** ili9341_writedata8(0xC1);
+ 662               		.loc 1 198 0
+ 663 02d0 81EC      		ldi r24,lo8(-63)
+ 664 02d2 0E94 0000 		call ili9341_writedata8
+ 665               	.LVL105:
+ 199:ili9341.c     **** ili9341_writedata8(0x48);
+ 666               		.loc 1 199 0
+ 667 02d6 88E4      		ldi r24,lo8(72)
+ 668 02d8 0E94 0000 		call ili9341_writedata8
+ 669               	.LVL106:
+ 200:ili9341.c     **** ili9341_writedata8(0x08);
+ 670               		.loc 1 200 0
+ 671 02dc 88E0      		ldi r24,lo8(8)
+ 672 02de 0E94 0000 		call ili9341_writedata8
+ 673               	.LVL107:
+ 201:ili9341.c     **** ili9341_writedata8(0x0F);
+ 674               		.loc 1 201 0
+ 675 02e2 8FE0      		ldi r24,lo8(15)
+ 676 02e4 0E94 0000 		call ili9341_writedata8
+ 677               	.LVL108:
+ 202:ili9341.c     **** ili9341_writedata8(0x0C);
+ 678               		.loc 1 202 0
+ 679 02e8 8CE0      		ldi r24,lo8(12)
+ 680 02ea 0E94 0000 		call ili9341_writedata8
+ 681               	.LVL109:
+ 203:ili9341.c     **** ili9341_writedata8(0x31);
+ 682               		.loc 1 203 0
+ 683 02ee 81E3      		ldi r24,lo8(49)
+ 684 02f0 0E94 0000 		call ili9341_writedata8
+ 685               	.LVL110:
+ 204:ili9341.c     **** ili9341_writedata8(0x36);
+ 686               		.loc 1 204 0
+ 687 02f4 86E3      		ldi r24,lo8(54)
+ 688 02f6 0E94 0000 		call ili9341_writedata8
+ 689               	.LVL111:
+ 205:ili9341.c     **** ili9341_writedata8(0x0F);
+ 690               		.loc 1 205 0
+ 691 02fa 8FE0      		ldi r24,lo8(15)
+ 692 02fc 0E94 0000 		call ili9341_writedata8
+ 693               	.LVL112:
+ 206:ili9341.c     **** 
+ 207:ili9341.c     **** //exit sleep
+ 208:ili9341.c     **** ili9341_writecommand8(0x11);
+ 694               		.loc 1 208 0
+ 695 0300 81E1      		ldi r24,lo8(17)
+ 696 0302 0E94 0000 		call ili9341_writecommand8
+ 697               	.LVL113:
+ 698               	.LBB28:
+ 699               	.LBB29:
+ 187:/usr/avr/include/util/delay.h **** 
+ 700               		.loc 2 187 0
+ 701 0306 2FEF      		ldi r18,lo8(383999)
+ 702 0308 8BED      		ldi r24,hi8(383999)
+ 703 030a 95E0      		ldi r25,hlo8(383999)
+ 704 030c 2150      	1:	subi r18,1
+ 705 030e 8040      		sbci r24,0
+ 706 0310 9040      		sbci r25,0
+ 707 0312 01F4      		brne 1b
+ 708 0314 00C0      		rjmp .
+ 709 0316 0000      		nop
+ 710               	.LVL114:
+ 711               	.LBE29:
+ 712               	.LBE28:
+ 209:ili9341.c     **** _delay_ms(120);
+ 210:ili9341.c     **** //display on
+ 211:ili9341.c     **** ili9341_writecommand8(0x29);
+ 713               		.loc 1 211 0
+ 714 0318 89E2      		ldi r24,lo8(41)
+ 715 031a 0C94 0000 		jmp ili9341_writecommand8
+ 716               	.LVL115:
+ 717               		.cfi_endproc
+ 718               	.LFE14:
+ 720               	.global	ili9341_pushcolour
+ 722               	ili9341_pushcolour:
+ 723               	.LFB15:
+ 212:ili9341.c     **** 
+ 213:ili9341.c     **** }
+ 214:ili9341.c     **** 
+ 215:ili9341.c     **** //set colour for drawing
+ 216:ili9341.c     **** void ili9341_pushcolour(uint16_t colour)
+ 217:ili9341.c     **** {
+ 724               		.loc 1 217 0
+ 725               		.cfi_startproc
+ 726               	.LVL116:
+ 727 031e CF93      		push r28
+ 728               	.LCFI7:
+ 729               		.cfi_def_cfa_offset 3
+ 730               		.cfi_offset 28, -2
+ 731               	/* prologue: function */
+ 732               	/* frame size = 0 */
+ 733               	/* stack size = 1 */
+ 734               	.L__stack_usage = 1
+ 735 0320 C82F      		mov r28,r24
+ 218:ili9341.c     **** ili9341_writedata8(colour>>8);
+ 736               		.loc 1 218 0
+ 737 0322 892F      		mov r24,r25
+ 738               	.LVL117:
+ 739 0324 0E94 0000 		call ili9341_writedata8
+ 740               	.LVL118:
+ 219:ili9341.c     **** ili9341_writedata8(colour);
+ 741               		.loc 1 219 0
+ 742 0328 8C2F      		mov r24,r28
+ 743               	/* epilogue start */
+ 220:ili9341.c     **** }
+ 744               		.loc 1 220 0
+ 745 032a CF91      		pop r28
+ 219:ili9341.c     **** ili9341_writedata8(colour);
+ 746               		.loc 1 219 0
+ 747 032c 0C94 0000 		jmp ili9341_writedata8
+ 748               	.LVL119:
+ 749               		.cfi_endproc
+ 750               	.LFE15:
+ 752               	.global	ili9341_clear
+ 754               	ili9341_clear:
+ 755               	.LFB16:
+ 221:ili9341.c     **** 
+ 222:ili9341.c     **** 
+ 223:ili9341.c     **** //clear lcd and fill with colour
+ 224:ili9341.c     **** void ili9341_clear(uint16_t colour)
+ 225:ili9341.c     **** {
+ 756               		.loc 1 225 0
+ 757               		.cfi_startproc
+ 758               	.LVL120:
+ 759 0330 EF92      		push r14
+ 760               	.LCFI8:
+ 761               		.cfi_def_cfa_offset 3
+ 762               		.cfi_offset 14, -2
+ 763 0332 FF92      		push r15
+ 764               	.LCFI9:
+ 765               		.cfi_def_cfa_offset 4
+ 766               		.cfi_offset 15, -3
+ 767 0334 0F93      		push r16
+ 768               	.LCFI10:
+ 769               		.cfi_def_cfa_offset 5
+ 770               		.cfi_offset 16, -4
+ 771 0336 1F93      		push r17
+ 772               	.LCFI11:
+ 773               		.cfi_def_cfa_offset 6
+ 774               		.cfi_offset 17, -5
+ 775 0338 CF93      		push r28
+ 776               	.LCFI12:
+ 777               		.cfi_def_cfa_offset 7
+ 778               		.cfi_offset 28, -6
+ 779 033a DF93      		push r29
+ 780               	.LCFI13:
+ 781               		.cfi_def_cfa_offset 8
+ 782               		.cfi_offset 29, -7
+ 783               	/* prologue: function */
+ 784               	/* frame size = 0 */
+ 785               	/* stack size = 6 */
+ 786               	.L__stack_usage = 6
+ 787 033c 7C01      		movw r14,r24
+ 226:ili9341.c     **** uint16_t i,j;
+ 227:ili9341.c     **** ili9341_setaddress(0,0,LCD_W-1,LCD_H-1);
+ 788               		.loc 1 227 0
+ 789 033e 2091 0000 		lds r18,LCD_H
+ 790 0342 3091 0000 		lds r19,LCD_H+1
+ 791 0346 4091 0000 		lds r20,LCD_W
+ 792 034a 5091 0000 		lds r21,LCD_W+1
+ 793 034e 2150      		subi r18,1
+ 794 0350 3109      		sbc r19,__zero_reg__
+ 795 0352 4150      		subi r20,1
+ 796 0354 5109      		sbc r21,__zero_reg__
+ 797 0356 70E0      		ldi r23,0
+ 798 0358 60E0      		ldi r22,0
+ 799 035a 90E0      		ldi r25,0
+ 800 035c 80E0      		ldi r24,0
+ 801               	.LVL121:
+ 802 035e 0E94 0000 		call ili9341_setaddress
+ 803               	.LVL122:
+ 228:ili9341.c     **** 
+ 229:ili9341.c     **** for(i=0;i<LCD_W;i++)
+ 804               		.loc 1 229 0
+ 805 0362 D0E0      		ldi r29,0
+ 806 0364 C0E0      		ldi r28,0
+ 807               	.LVL123:
+ 808               	.L13:
+ 809               		.loc 1 229 0 is_stmt 0 discriminator 1
+ 810 0366 8091 0000 		lds r24,LCD_W
+ 811 036a 9091 0000 		lds r25,LCD_W+1
+ 812 036e C817      		cp r28,r24
+ 813 0370 D907      		cpc r29,r25
+ 814 0372 00F0      		brlo .L16
+ 815               	/* epilogue start */
+ 230:ili9341.c     **** {
+ 231:ili9341.c     **** for(j=0;j<LCD_H;j++)
+ 232:ili9341.c     **** {
+ 233:ili9341.c     **** ili9341_pushcolour(colour);
+ 234:ili9341.c     **** }
+ 235:ili9341.c     **** }
+ 236:ili9341.c     **** 
+ 237:ili9341.c     **** }
+ 816               		.loc 1 237 0 is_stmt 1
+ 817 0374 DF91      		pop r29
+ 818 0376 CF91      		pop r28
+ 819               	.LVL124:
+ 820 0378 1F91      		pop r17
+ 821 037a 0F91      		pop r16
+ 822 037c FF90      		pop r15
+ 823 037e EF90      		pop r14
+ 824               	.LVL125:
+ 825 0380 0895      		ret
+ 826               	.LVL126:
+ 827               	.L14:
+ 233:ili9341.c     **** }
+ 828               		.loc 1 233 0 discriminator 3
+ 829 0382 C701      		movw r24,r14
+ 830 0384 0E94 0000 		call ili9341_pushcolour
+ 831               	.LVL127:
+ 231:ili9341.c     **** {
+ 832               		.loc 1 231 0 discriminator 3
+ 833 0388 0F5F      		subi r16,-1
+ 834 038a 1F4F      		sbci r17,-1
+ 835               	.LVL128:
+ 836               	.L15:
+ 231:ili9341.c     **** {
+ 837               		.loc 1 231 0 is_stmt 0 discriminator 1
+ 838 038c 8091 0000 		lds r24,LCD_H
+ 839 0390 9091 0000 		lds r25,LCD_H+1
+ 840 0394 0817      		cp r16,r24
+ 841 0396 1907      		cpc r17,r25
+ 842 0398 00F0      		brlo .L14
+ 229:ili9341.c     **** {
+ 843               		.loc 1 229 0 is_stmt 1 discriminator 2
+ 844 039a 2196      		adiw r28,1
+ 845               	.LVL129:
+ 846 039c 00C0      		rjmp .L13
+ 847               	.LVL130:
+ 848               	.L16:
+ 231:ili9341.c     **** {
+ 849               		.loc 1 231 0
+ 850 039e 10E0      		ldi r17,0
+ 851 03a0 00E0      		ldi r16,0
+ 852 03a2 00C0      		rjmp .L15
+ 853               		.cfi_endproc
+ 854               	.LFE16:
+ 856               	.global	ili9341_drawpixel
+ 858               	ili9341_drawpixel:
+ 859               	.LFB17:
+ 238:ili9341.c     **** 
+ 239:ili9341.c     **** 
+ 240:ili9341.c     **** 
+ 241:ili9341.c     **** //draw pixel
+ 242:ili9341.c     **** void ili9341_drawpixel(uint16_t x3,uint16_t y3,uint16_t colour1) //pixels will always be counted fr
+ 243:ili9341.c     **** {
+ 860               		.loc 1 243 0
+ 861               		.cfi_startproc
+ 862               	.LVL131:
+ 863 03a4 CF93      		push r28
+ 864               	.LCFI14:
+ 865               		.cfi_def_cfa_offset 3
+ 866               		.cfi_offset 28, -2
+ 867 03a6 DF93      		push r29
+ 868               	.LCFI15:
+ 869               		.cfi_def_cfa_offset 4
+ 870               		.cfi_offset 29, -3
+ 871               	/* prologue: function */
+ 872               	/* frame size = 0 */
+ 873               	/* stack size = 2 */
+ 874               	.L__stack_usage = 2
+ 875 03a8 EA01      		movw r28,r20
+ 244:ili9341.c     **** if((x3 < 0) ||(x3 >=LCD_W) || (y3 < 0) || (y3 >=LCD_H)) return;
+ 876               		.loc 1 244 0
+ 877 03aa 2091 0000 		lds r18,LCD_W
+ 878 03ae 3091 0000 		lds r19,LCD_W+1
+ 879 03b2 8217      		cp r24,r18
+ 880 03b4 9307      		cpc r25,r19
+ 881 03b6 00F4      		brsh .L17
+ 882               		.loc 1 244 0 is_stmt 0 discriminator 1
+ 883 03b8 2091 0000 		lds r18,LCD_H
+ 884 03bc 3091 0000 		lds r19,LCD_H+1
+ 885 03c0 6217      		cp r22,r18
+ 886 03c2 7307      		cpc r23,r19
+ 887 03c4 00F4      		brsh .L17
+ 888               	.LVL132:
+ 889               	.LBB32:
+ 890               	.LBB33:
+ 245:ili9341.c     **** 
+ 246:ili9341.c     **** ili9341_setaddress(x3,y3,x3+1,y3+1);
+ 891               		.loc 1 246 0 is_stmt 1
+ 892 03c6 9B01      		movw r18,r22
+ 893 03c8 2F5F      		subi r18,-1
+ 894 03ca 3F4F      		sbci r19,-1
+ 895 03cc AC01      		movw r20,r24
+ 896               	.LVL133:
+ 897 03ce 4F5F      		subi r20,-1
+ 898 03d0 5F4F      		sbci r21,-1
+ 899 03d2 0E94 0000 		call ili9341_setaddress
+ 900               	.LVL134:
+ 247:ili9341.c     **** 
+ 248:ili9341.c     **** ili9341_pushcolour(colour1);
+ 901               		.loc 1 248 0
+ 902 03d6 CE01      		movw r24,r28
+ 903               	/* epilogue start */
+ 904               	.LBE33:
+ 905               	.LBE32:
+ 249:ili9341.c     **** }
+ 906               		.loc 1 249 0
+ 907 03d8 DF91      		pop r29
+ 908 03da CF91      		pop r28
+ 909               	.LVL135:
+ 910               	.LBB35:
+ 911               	.LBB34:
+ 248:ili9341.c     **** }
+ 912               		.loc 1 248 0
+ 913 03dc 0C94 0000 		jmp ili9341_pushcolour
+ 914               	.LVL136:
+ 915               	.L17:
+ 916               	/* epilogue start */
+ 917               	.LBE34:
+ 918               	.LBE35:
+ 919               		.loc 1 249 0
+ 920 03e0 DF91      		pop r29
+ 921 03e2 CF91      		pop r28
+ 922 03e4 0895      		ret
+ 923               		.cfi_endproc
+ 924               	.LFE17:
+ 926               	.global	ili9341_drawvline
+ 928               	ili9341_drawvline:
+ 929               	.LFB18:
+ 250:ili9341.c     **** 
+ 251:ili9341.c     **** 
+ 252:ili9341.c     **** //draw vertical line
+ 253:ili9341.c     **** void ili9341_drawvline(uint16_t x,uint16_t y,uint16_t h,uint16_t colour)//basically we will see thi
+ 254:ili9341.c     **** {
+ 930               		.loc 1 254 0
+ 931               		.cfi_startproc
+ 932               	.LVL137:
+ 933 03e6 0F93      		push r16
+ 934               	.LCFI16:
+ 935               		.cfi_def_cfa_offset 3
+ 936               		.cfi_offset 16, -2
+ 937 03e8 1F93      		push r17
+ 938               	.LCFI17:
+ 939               		.cfi_def_cfa_offset 4
+ 940               		.cfi_offset 17, -3
+ 941 03ea CF93      		push r28
+ 942               	.LCFI18:
+ 943               		.cfi_def_cfa_offset 5
+ 944               		.cfi_offset 28, -4
+ 945 03ec DF93      		push r29
+ 946               	.LCFI19:
+ 947               		.cfi_def_cfa_offset 6
+ 948               		.cfi_offset 29, -5
+ 949               	/* prologue: function */
+ 950               	/* frame size = 0 */
+ 951               	/* stack size = 4 */
+ 952               	.L__stack_usage = 4
+ 953 03ee EA01      		movw r28,r20
+ 954 03f0 8901      		movw r16,r18
+ 255:ili9341.c     **** if((x >=LCD_W) || (y >=LCD_H)) return;
+ 955               		.loc 1 255 0
+ 956 03f2 2091 0000 		lds r18,LCD_W
+ 957 03f6 3091 0000 		lds r19,LCD_W+1
+ 958               	.LVL138:
+ 959 03fa 8217      		cp r24,r18
+ 960 03fc 9307      		cpc r25,r19
+ 961 03fe 00F4      		brsh .L19
+ 962               		.loc 1 255 0 is_stmt 0 discriminator 1
+ 963 0400 2091 0000 		lds r18,LCD_H
+ 964 0404 3091 0000 		lds r19,LCD_H+1
+ 965 0408 6217      		cp r22,r18
+ 966 040a 7307      		cpc r23,r19
+ 967 040c 00F4      		brsh .L19
+ 968               	.LVL139:
+ 969               	.LBB38:
+ 970               	.LBB39:
+ 256:ili9341.c     **** if((y+h-1)>=LCD_H)
+ 971               		.loc 1 256 0 is_stmt 1
+ 972 040e 4091 0000 		lds r20,LCD_H
+ 973 0412 5091 0000 		lds r21,LCD_H+1
+ 974               	.LVL140:
+ 975 0416 9E01      		movw r18,r28
+ 976 0418 2150      		subi r18,1
+ 977 041a 3109      		sbc r19,__zero_reg__
+ 978 041c 260F      		add r18,r22
+ 979 041e 371F      		adc r19,r23
+ 980 0420 2417      		cp r18,r20
+ 981 0422 3507      		cpc r19,r21
+ 982 0424 00F0      		brlo .L22
+ 257:ili9341.c     **** h=LCD_H-y;
+ 983               		.loc 1 257 0
+ 984 0426 C091 0000 		lds r28,LCD_H
+ 985 042a D091 0000 		lds r29,LCD_H+1
+ 986               	.LVL141:
+ 987 042e C61B      		sub r28,r22
+ 988 0430 D70B      		sbc r29,r23
+ 989               	.LVL142:
+ 990               	.L22:
+ 258:ili9341.c     **** ili9341_setaddress(x,y,x,y+h-1);
+ 991               		.loc 1 258 0
+ 992 0432 9B01      		movw r18,r22
+ 993 0434 2150      		subi r18,1
+ 994 0436 3109      		sbc r19,__zero_reg__
+ 995 0438 2C0F      		add r18,r28
+ 996 043a 3D1F      		adc r19,r29
+ 997 043c AC01      		movw r20,r24
+ 998 043e 0E94 0000 		call ili9341_setaddress
+ 999               	.LVL143:
+ 1000               	.L23:
+ 259:ili9341.c     **** while(h--)
+ 1001               		.loc 1 259 0
+ 1002               	.LVL144:
+ 1003 0442 2197      		sbiw r28,1
+ 1004 0444 00F4      		brcc .L24
+ 1005               	.L19:
+ 1006               	/* epilogue start */
+ 1007               	.LBE39:
+ 1008               	.LBE38:
+ 260:ili9341.c     **** {
+ 261:ili9341.c     **** ili9341_pushcolour(colour);
+ 262:ili9341.c     **** }
+ 263:ili9341.c     **** }
+ 1009               		.loc 1 263 0
+ 1010 0446 DF91      		pop r29
+ 1011 0448 CF91      		pop r28
+ 1012 044a 1F91      		pop r17
+ 1013 044c 0F91      		pop r16
+ 1014               	.LVL145:
+ 1015 044e 0895      		ret
+ 1016               	.LVL146:
+ 1017               	.L24:
+ 1018               	.LBB41:
+ 1019               	.LBB40:
+ 261:ili9341.c     **** }
+ 1020               		.loc 1 261 0
+ 1021 0450 C801      		movw r24,r16
+ 1022 0452 0E94 0000 		call ili9341_pushcolour
+ 1023               	.LVL147:
+ 1024 0456 00C0      		rjmp .L23
+ 1025               	.LBE40:
+ 1026               	.LBE41:
+ 1027               		.cfi_endproc
+ 1028               	.LFE18:
+ 1030               	.global	ili9341_drawhline
+ 1032               	ili9341_drawhline:
+ 1033               	.LFB19:
+ 264:ili9341.c     **** 
+ 265:ili9341.c     **** 
+ 266:ili9341.c     **** //draw horizental line
+ 267:ili9341.c     **** 
+ 268:ili9341.c     **** void ili9341_drawhline(uint16_t x,uint16_t y,uint16_t w,uint16_t colour)
+ 269:ili9341.c     **** {
+ 1034               		.loc 1 269 0
+ 1035               		.cfi_startproc
+ 1036               	.LVL148:
+ 1037 0458 0F93      		push r16
+ 1038               	.LCFI20:
+ 1039               		.cfi_def_cfa_offset 3
+ 1040               		.cfi_offset 16, -2
+ 1041 045a 1F93      		push r17
+ 1042               	.LCFI21:
+ 1043               		.cfi_def_cfa_offset 4
+ 1044               		.cfi_offset 17, -3
+ 1045 045c CF93      		push r28
+ 1046               	.LCFI22:
+ 1047               		.cfi_def_cfa_offset 5
+ 1048               		.cfi_offset 28, -4
+ 1049 045e DF93      		push r29
+ 1050               	.LCFI23:
+ 1051               		.cfi_def_cfa_offset 6
+ 1052               		.cfi_offset 29, -5
+ 1053               	/* prologue: function */
+ 1054               	/* frame size = 0 */
+ 1055               	/* stack size = 4 */
+ 1056               	.L__stack_usage = 4
+ 1057 0460 EA01      		movw r28,r20
+ 1058 0462 8901      		movw r16,r18
+ 270:ili9341.c     **** if((x >=LCD_W) || (y >=LCD_H)) return;
+ 1059               		.loc 1 270 0
+ 1060 0464 2091 0000 		lds r18,LCD_W
+ 1061 0468 3091 0000 		lds r19,LCD_W+1
+ 1062               	.LVL149:
+ 1063 046c 8217      		cp r24,r18
+ 1064 046e 9307      		cpc r25,r19
+ 1065 0470 00F4      		brsh .L25
+ 1066               		.loc 1 270 0 is_stmt 0 discriminator 1
+ 1067 0472 2091 0000 		lds r18,LCD_H
+ 1068 0476 3091 0000 		lds r19,LCD_H+1
+ 1069 047a 6217      		cp r22,r18
+ 1070 047c 7307      		cpc r23,r19
+ 1071 047e 00F4      		brsh .L25
+ 271:ili9341.c     **** if((x+w-1)>=LCD_W)
+ 1072               		.loc 1 271 0 is_stmt 1
+ 1073 0480 4091 0000 		lds r20,LCD_W
+ 1074 0484 5091 0000 		lds r21,LCD_W+1
+ 1075               	.LVL150:
+ 1076 0488 9E01      		movw r18,r28
+ 1077 048a 2150      		subi r18,1
+ 1078 048c 3109      		sbc r19,__zero_reg__
+ 1079 048e 280F      		add r18,r24
+ 1080 0490 391F      		adc r19,r25
+ 1081 0492 2417      		cp r18,r20
+ 1082 0494 3507      		cpc r19,r21
+ 1083 0496 00F0      		brlo .L28
+ 272:ili9341.c     **** w=LCD_W-x;
+ 1084               		.loc 1 272 0
+ 1085 0498 C091 0000 		lds r28,LCD_W
+ 1086 049c D091 0000 		lds r29,LCD_W+1
+ 1087               	.LVL151:
+ 1088 04a0 C81B      		sub r28,r24
+ 1089 04a2 D90B      		sbc r29,r25
+ 1090               	.LVL152:
+ 1091               	.L28:
+ 273:ili9341.c     **** ili9341_setaddress(x,y,x+w-1,y);
+ 1092               		.loc 1 273 0
+ 1093 04a4 AC01      		movw r20,r24
+ 1094 04a6 4150      		subi r20,1
+ 1095 04a8 5109      		sbc r21,__zero_reg__
+ 1096 04aa 4C0F      		add r20,r28
+ 1097 04ac 5D1F      		adc r21,r29
+ 1098 04ae 9B01      		movw r18,r22
+ 1099 04b0 0E94 0000 		call ili9341_setaddress
+ 1100               	.LVL153:
+ 1101               	.L29:
+ 274:ili9341.c     **** while(w--)
+ 1102               		.loc 1 274 0
+ 1103               	.LVL154:
+ 1104 04b4 2197      		sbiw r28,1
+ 1105 04b6 00F4      		brcc .L30
+ 1106               	.L25:
+ 1107               	/* epilogue start */
+ 275:ili9341.c     **** {
+ 276:ili9341.c     **** ili9341_pushcolour(colour);
+ 277:ili9341.c     **** }
+ 278:ili9341.c     **** }
+ 1108               		.loc 1 278 0
+ 1109 04b8 DF91      		pop r29
+ 1110 04ba CF91      		pop r28
+ 1111               	.LVL155:
+ 1112 04bc 1F91      		pop r17
+ 1113 04be 0F91      		pop r16
+ 1114               	.LVL156:
+ 1115 04c0 0895      		ret
+ 1116               	.LVL157:
+ 1117               	.L30:
+ 276:ili9341.c     **** }
+ 1118               		.loc 1 276 0
+ 1119 04c2 C801      		movw r24,r16
+ 1120 04c4 0E94 0000 		call ili9341_pushcolour
+ 1121               	.LVL158:
+ 1122 04c8 00C0      		rjmp .L29
+ 1123               		.cfi_endproc
+ 1124               	.LFE19:
+ 1126               	.global	ili9341_fillrect
+ 1128               	ili9341_fillrect:
+ 1129               	.LFB20:
+ 279:ili9341.c     **** 
+ 280:ili9341.c     **** //draw colour filled rectangle
+ 281:ili9341.c     **** void ili9341_fillrect(uint16_t x,uint16_t y,uint16_t w,uint16_t h,uint16_t colour)
+ 282:ili9341.c     **** {
+ 1130               		.loc 1 282 0
+ 1131               		.cfi_startproc
+ 1132               	.LVL159:
+ 1133 04ca CF92      		push r12
+ 1134               	.LCFI24:
+ 1135               		.cfi_def_cfa_offset 3
+ 1136               		.cfi_offset 12, -2
+ 1137 04cc DF92      		push r13
+ 1138               	.LCFI25:
+ 1139               		.cfi_def_cfa_offset 4
+ 1140               		.cfi_offset 13, -3
+ 1141 04ce EF92      		push r14
+ 1142               	.LCFI26:
+ 1143               		.cfi_def_cfa_offset 5
+ 1144               		.cfi_offset 14, -4
+ 1145 04d0 FF92      		push r15
+ 1146               	.LCFI27:
+ 1147               		.cfi_def_cfa_offset 6
+ 1148               		.cfi_offset 15, -5
+ 1149 04d2 0F93      		push r16
+ 1150               	.LCFI28:
+ 1151               		.cfi_def_cfa_offset 7
+ 1152               		.cfi_offset 16, -6
+ 1153 04d4 1F93      		push r17
+ 1154               	.LCFI29:
+ 1155               		.cfi_def_cfa_offset 8
+ 1156               		.cfi_offset 17, -7
+ 1157 04d6 CF93      		push r28
+ 1158               	.LCFI30:
+ 1159               		.cfi_def_cfa_offset 9
+ 1160               		.cfi_offset 28, -8
+ 1161 04d8 DF93      		push r29
+ 1162               	.LCFI31:
+ 1163               		.cfi_def_cfa_offset 10
+ 1164               		.cfi_offset 29, -9
+ 1165               	/* prologue: function */
+ 1166               	/* frame size = 0 */
+ 1167               	/* stack size = 8 */
+ 1168               	.L__stack_usage = 8
+ 1169 04da 7A01      		movw r14,r20
+ 1170 04dc E901      		movw r28,r18
+ 283:ili9341.c     **** if((x >=LCD_W) || (y >=LCD_H)) return;
+ 1171               		.loc 1 283 0
+ 1172 04de 2091 0000 		lds r18,LCD_W
+ 1173 04e2 3091 0000 		lds r19,LCD_W+1
+ 1174               	.LVL160:
+ 1175 04e6 8217      		cp r24,r18
+ 1176 04e8 9307      		cpc r25,r19
+ 1177 04ea 00F4      		brsh .L31
+ 1178               		.loc 1 283 0 is_stmt 0 discriminator 1
+ 1179 04ec 2091 0000 		lds r18,LCD_H
+ 1180 04f0 3091 0000 		lds r19,LCD_H+1
+ 1181 04f4 6217      		cp r22,r18
+ 1182 04f6 7307      		cpc r23,r19
+ 1183 04f8 00F4      		brsh .L31
+ 284:ili9341.c     **** if((x+w-1)>=LCD_W)
+ 1184               		.loc 1 284 0 is_stmt 1
+ 1185 04fa 4091 0000 		lds r20,LCD_W
+ 1186 04fe 5091 0000 		lds r21,LCD_W+1
+ 1187               	.LVL161:
+ 1188 0502 9701      		movw r18,r14
+ 1189 0504 2150      		subi r18,1
+ 1190 0506 3109      		sbc r19,__zero_reg__
+ 1191 0508 280F      		add r18,r24
+ 1192 050a 391F      		adc r19,r25
+ 1193 050c 2417      		cp r18,r20
+ 1194 050e 3507      		cpc r19,r21
+ 1195 0510 00F0      		brlo .L33
+ 285:ili9341.c     **** w=LCD_W-x;
+ 1196               		.loc 1 285 0
+ 1197 0512 E090 0000 		lds r14,LCD_W
+ 1198 0516 F090 0000 		lds r15,LCD_W+1
+ 1199               	.LVL162:
+ 1200 051a E81A      		sub r14,r24
+ 1201 051c F90A      		sbc r15,r25
+ 1202               	.LVL163:
+ 1203               	.L33:
+ 286:ili9341.c     **** if((y+h-1)>=LCD_H)
+ 1204               		.loc 1 286 0
+ 1205 051e 4091 0000 		lds r20,LCD_H
+ 1206 0522 5091 0000 		lds r21,LCD_H+1
+ 1207 0526 9E01      		movw r18,r28
+ 1208 0528 2150      		subi r18,1
+ 1209 052a 3109      		sbc r19,__zero_reg__
+ 1210 052c 260F      		add r18,r22
+ 1211 052e 371F      		adc r19,r23
+ 1212 0530 2417      		cp r18,r20
+ 1213 0532 3507      		cpc r19,r21
+ 1214 0534 00F0      		brlo .L34
+ 287:ili9341.c     **** h=LCD_H-y;
+ 1215               		.loc 1 287 0
+ 1216 0536 C091 0000 		lds r28,LCD_H
+ 1217 053a D091 0000 		lds r29,LCD_H+1
+ 1218               	.LVL164:
+ 1219 053e C61B      		sub r28,r22
+ 1220 0540 D70B      		sbc r29,r23
+ 1221               	.LVL165:
+ 1222               	.L34:
+ 288:ili9341.c     **** 
+ 289:ili9341.c     **** ili9341_setaddress(x, y, x+w-1, y+h-1);
+ 1223               		.loc 1 289 0
+ 1224 0542 9B01      		movw r18,r22
+ 1225 0544 2150      		subi r18,1
+ 1226 0546 3109      		sbc r19,__zero_reg__
+ 1227 0548 2C0F      		add r18,r28
+ 1228 054a 3D1F      		adc r19,r29
+ 1229 054c AC01      		movw r20,r24
+ 1230 054e 4150      		subi r20,1
+ 1231 0550 5109      		sbc r21,__zero_reg__
+ 1232 0552 4E0D      		add r20,r14
+ 1233 0554 5F1D      		adc r21,r15
+ 1234 0556 0E94 0000 		call ili9341_setaddress
+ 1235               	.LVL166:
+ 1236               	.L35:
+ 290:ili9341.c     **** 
+ 291:ili9341.c     **** for(y=h; y>0; y--) 
+ 1237               		.loc 1 291 0 discriminator 1
+ 1238 055a 2097      		sbiw r28,0
+ 1239 055c 01F4      		brne .L38
+ 1240               	.LVL167:
+ 1241               	.L31:
+ 1242               	/* epilogue start */
+ 292:ili9341.c     **** {
+ 293:ili9341.c     **** for(x=w; x>0; x--)
+ 294:ili9341.c     **** {
+ 295:ili9341.c     **** ili9341_pushcolour(colour);
+ 296:ili9341.c     **** }
+ 297:ili9341.c     **** }
+ 298:ili9341.c     **** }
+ 1243               		.loc 1 298 0
+ 1244 055e DF91      		pop r29
+ 1245 0560 CF91      		pop r28
+ 1246 0562 1F91      		pop r17
+ 1247 0564 0F91      		pop r16
+ 1248               	.LVL168:
+ 1249 0566 FF90      		pop r15
+ 1250 0568 EF90      		pop r14
+ 1251               	.LVL169:
+ 1252 056a DF90      		pop r13
+ 1253 056c CF90      		pop r12
+ 1254 056e 0895      		ret
+ 1255               	.LVL170:
+ 1256               	.L36:
+ 295:ili9341.c     **** }
+ 1257               		.loc 1 295 0 discriminator 3
+ 1258 0570 C801      		movw r24,r16
+ 1259 0572 0E94 0000 		call ili9341_pushcolour
+ 1260               	.LVL171:
+ 293:ili9341.c     **** {
+ 1261               		.loc 1 293 0 discriminator 3
+ 1262 0576 81E0      		ldi r24,1
+ 1263 0578 C81A      		sub r12,r24
+ 1264 057a D108      		sbc r13,__zero_reg__
+ 1265               	.LVL172:
+ 1266               	.L37:
+ 293:ili9341.c     **** {
+ 1267               		.loc 1 293 0 is_stmt 0 discriminator 1
+ 1268 057c C114      		cp r12,__zero_reg__
+ 1269 057e D104      		cpc r13,__zero_reg__
+ 1270 0580 01F4      		brne .L36
+ 291:ili9341.c     **** {
+ 1271               		.loc 1 291 0 is_stmt 1 discriminator 2
+ 1272 0582 2197      		sbiw r28,1
+ 1273               	.LVL173:
+ 1274 0584 00C0      		rjmp .L35
+ 1275               	.LVL174:
+ 1276               	.L38:
+ 293:ili9341.c     **** {
+ 1277               		.loc 1 293 0
+ 1278 0586 6701      		movw r12,r14
+ 1279 0588 00C0      		rjmp .L37
+ 1280               		.cfi_endproc
+ 1281               	.LFE20:
+ 1283               	.global	ili9341_setRotation
+ 1285               	ili9341_setRotation:
+ 1286               	.LFB21:
+ 299:ili9341.c     **** //rotate screen at desired orientation
+ 300:ili9341.c     **** void ili9341_setRotation(uint8_t m) 
+ 301:ili9341.c     **** {
+ 1287               		.loc 1 301 0
+ 1288               		.cfi_startproc
+ 1289               	.LVL175:
+ 1290 058a CF93      		push r28
+ 1291               	.LCFI32:
+ 1292               		.cfi_def_cfa_offset 3
+ 1293               		.cfi_offset 28, -2
+ 1294               	/* prologue: function */
+ 1295               	/* frame size = 0 */
+ 1296               	/* stack size = 1 */
+ 1297               	.L__stack_usage = 1
+ 1298 058c C82F      		mov r28,r24
+ 302:ili9341.c     **** uint8_t rotation;
+ 303:ili9341.c     **** ili9341_writecommand8(0x36);
+ 1299               		.loc 1 303 0
+ 1300 058e 86E3      		ldi r24,lo8(54)
+ 1301               	.LVL176:
+ 1302 0590 0E94 0000 		call ili9341_writecommand8
+ 1303               	.LVL177:
+ 304:ili9341.c     **** rotation=m%4;
+ 1304               		.loc 1 304 0
+ 1305 0594 C370      		andi r28,lo8(3)
+ 1306               	.LVL178:
+ 305:ili9341.c     **** switch (rotation) 
+ 1307               		.loc 1 305 0
+ 1308 0596 C230      		cpi r28,lo8(2)
+ 1309 0598 01F0      		breq .L41
+ 1310 059a C330      		cpi r28,lo8(3)
+ 1311 059c 01F0      		breq .L42
+ 306:ili9341.c     **** {
+ 307:ili9341.c     **** case 0:
+ 308:ili9341.c     **** ili9341_writedata8(0x40|0x08);
+ 1312               		.loc 1 308 0
+ 1313 059e 88E4      		ldi r24,lo8(72)
+ 305:ili9341.c     **** switch (rotation) 
+ 1314               		.loc 1 305 0
+ 1315 05a0 C130      		cpi r28,lo8(1)
+ 1316 05a2 01F4      		brne .L47
+ 309:ili9341.c     **** LCD_W = 240;
+ 310:ili9341.c     **** LCD_H = 320;
+ 311:ili9341.c     **** break;
+ 312:ili9341.c     **** case 1:
+ 313:ili9341.c     **** ili9341_writedata8(0x20|0x08);
+ 1317               		.loc 1 313 0
+ 1318 05a4 88E2      		ldi r24,lo8(40)
+ 1319               	.L45:
+ 314:ili9341.c     **** LCD_W  = 320;
+ 315:ili9341.c     **** LCD_H = 240;
+ 316:ili9341.c     **** break;
+ 317:ili9341.c     **** case 2:
+ 318:ili9341.c     **** ili9341_writedata8(0x80|0x08);
+ 319:ili9341.c     **** LCD_W  = 240;
+ 320:ili9341.c     **** LCD_H = 320;
+ 321:ili9341.c     **** break;
+ 322:ili9341.c     **** case 3:
+ 323:ili9341.c     **** ili9341_writedata8(0x40|0x80|0x20|0x08);
+ 1320               		.loc 1 323 0
+ 1321 05a6 0E94 0000 		call ili9341_writedata8
+ 1322               	.LVL179:
+ 324:ili9341.c     **** LCD_W  = 320;
+ 1323               		.loc 1 324 0
+ 1324 05aa 80E4      		ldi r24,lo8(64)
+ 1325 05ac 91E0      		ldi r25,lo8(1)
+ 1326 05ae 9093 0000 		sts LCD_W+1,r25
+ 1327 05b2 8093 0000 		sts LCD_W,r24
+ 325:ili9341.c     **** LCD_H = 240;
+ 1328               		.loc 1 325 0
+ 1329 05b6 80EF      		ldi r24,lo8(-16)
+ 1330 05b8 90E0      		ldi r25,0
+ 1331 05ba 00C0      		rjmp .L46
+ 1332               	.L41:
+ 318:ili9341.c     **** LCD_W  = 240;
+ 1333               		.loc 1 318 0
+ 1334 05bc 88E8      		ldi r24,lo8(-120)
+ 1335               	.L47:
+ 1336 05be 0E94 0000 		call ili9341_writedata8
+ 1337               	.LVL180:
+ 319:ili9341.c     **** LCD_H = 320;
+ 1338               		.loc 1 319 0
+ 1339 05c2 80EF      		ldi r24,lo8(-16)
+ 1340 05c4 90E0      		ldi r25,0
+ 1341 05c6 9093 0000 		sts LCD_W+1,r25
+ 1342 05ca 8093 0000 		sts LCD_W,r24
+ 320:ili9341.c     **** break;
+ 1343               		.loc 1 320 0
+ 1344 05ce 80E4      		ldi r24,lo8(64)
+ 1345 05d0 91E0      		ldi r25,lo8(1)
+ 1346               	.L46:
+ 1347               		.loc 1 325 0
+ 1348 05d2 9093 0000 		sts LCD_H+1,r25
+ 1349 05d6 8093 0000 		sts LCD_H,r24
+ 1350               	/* epilogue start */
+ 326:ili9341.c     **** break;
+ 327:ili9341.c     **** }
+ 328:ili9341.c     **** }
+ 1351               		.loc 1 328 0
+ 1352 05da CF91      		pop r28
+ 1353               	.LVL181:
+ 1354 05dc 0895      		ret
+ 1355               	.LVL182:
+ 1356               	.L42:
+ 323:ili9341.c     **** LCD_W  = 320;
+ 1357               		.loc 1 323 0
+ 1358 05de 88EE      		ldi r24,lo8(-24)
+ 1359 05e0 00C0      		rjmp .L45
+ 1360               		.cfi_endproc
+ 1361               	.LFE21:
+ 1363               	.global	ili9341_drawCircle
+ 1365               	ili9341_drawCircle:
+ 1366               	.LFB22:
+ 329:ili9341.c     **** 
+ 330:ili9341.c     **** // Draw a circle outline
+ 331:ili9341.c     **** void ili9341_drawCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color) 
+ 332:ili9341.c     **** {
+ 1367               		.loc 1 332 0
+ 1368               		.cfi_startproc
+ 1369               	.LVL183:
+ 1370 05e2 2F92      		push r2
+ 1371               	.LCFI33:
+ 1372               		.cfi_def_cfa_offset 3
+ 1373               		.cfi_offset 2, -2
+ 1374 05e4 3F92      		push r3
+ 1375               	.LCFI34:
+ 1376               		.cfi_def_cfa_offset 4
+ 1377               		.cfi_offset 3, -3
+ 1378 05e6 4F92      		push r4
+ 1379               	.LCFI35:
+ 1380               		.cfi_def_cfa_offset 5
+ 1381               		.cfi_offset 4, -4
+ 1382 05e8 5F92      		push r5
+ 1383               	.LCFI36:
+ 1384               		.cfi_def_cfa_offset 6
+ 1385               		.cfi_offset 5, -5
+ 1386 05ea 6F92      		push r6
+ 1387               	.LCFI37:
+ 1388               		.cfi_def_cfa_offset 7
+ 1389               		.cfi_offset 6, -6
+ 1390 05ec 7F92      		push r7
+ 1391               	.LCFI38:
+ 1392               		.cfi_def_cfa_offset 8
+ 1393               		.cfi_offset 7, -7
+ 1394 05ee 8F92      		push r8
+ 1395               	.LCFI39:
+ 1396               		.cfi_def_cfa_offset 9
+ 1397               		.cfi_offset 8, -8
+ 1398 05f0 9F92      		push r9
+ 1399               	.LCFI40:
+ 1400               		.cfi_def_cfa_offset 10
+ 1401               		.cfi_offset 9, -9
+ 1402 05f2 AF92      		push r10
+ 1403               	.LCFI41:
+ 1404               		.cfi_def_cfa_offset 11
+ 1405               		.cfi_offset 10, -10
+ 1406 05f4 BF92      		push r11
+ 1407               	.LCFI42:
+ 1408               		.cfi_def_cfa_offset 12
+ 1409               		.cfi_offset 11, -11
+ 1410 05f6 CF92      		push r12
+ 1411               	.LCFI43:
+ 1412               		.cfi_def_cfa_offset 13
+ 1413               		.cfi_offset 12, -12
+ 1414 05f8 DF92      		push r13
+ 1415               	.LCFI44:
+ 1416               		.cfi_def_cfa_offset 14
+ 1417               		.cfi_offset 13, -13
+ 1418 05fa EF92      		push r14
+ 1419               	.LCFI45:
+ 1420               		.cfi_def_cfa_offset 15
+ 1421               		.cfi_offset 14, -14
+ 1422 05fc FF92      		push r15
+ 1423               	.LCFI46:
+ 1424               		.cfi_def_cfa_offset 16
+ 1425               		.cfi_offset 15, -15
+ 1426 05fe 0F93      		push r16
+ 1427               	.LCFI47:
+ 1428               		.cfi_def_cfa_offset 17
+ 1429               		.cfi_offset 16, -16
+ 1430 0600 1F93      		push r17
+ 1431               	.LCFI48:
+ 1432               		.cfi_def_cfa_offset 18
+ 1433               		.cfi_offset 17, -17
+ 1434 0602 CF93      		push r28
+ 1435               	.LCFI49:
+ 1436               		.cfi_def_cfa_offset 19
+ 1437               		.cfi_offset 28, -18
+ 1438 0604 DF93      		push r29
+ 1439               	.LCFI50:
+ 1440               		.cfi_def_cfa_offset 20
+ 1441               		.cfi_offset 29, -19
+ 1442 0606 00D0      		rcall .
+ 1443 0608 00D0      		rcall .
+ 1444 060a 00D0      		rcall .
+ 1445               	.LCFI51:
+ 1446               		.cfi_def_cfa_offset 26
+ 1447 060c CDB7      		in r28,__SP_L__
+ 1448 060e DEB7      		in r29,__SP_H__
+ 1449               	.LCFI52:
+ 1450               		.cfi_def_cfa_register 28
+ 1451               	/* prologue: function */
+ 1452               	/* frame size = 6 */
+ 1453               	/* stack size = 24 */
+ 1454               	.L__stack_usage = 24
+ 1455 0610 7C01      		movw r14,r24
+ 1456 0612 6B01      		movw r12,r22
+ 1457 0614 5E83      		std Y+6,r21
+ 1458 0616 4D83      		std Y+5,r20
+ 1459 0618 8901      		movw r16,r18
+ 333:ili9341.c     ****   int16_t f = 1 - r;
+ 1460               		.loc 1 333 0
+ 1461 061a 81E0      		ldi r24,lo8(1)
+ 1462 061c 90E0      		ldi r25,0
+ 1463               	.LVL184:
+ 1464 061e 3C01      		movw r6,r24
+ 1465 0620 641A      		sub r6,r20
+ 1466 0622 750A      		sbc r7,r21
+ 1467               	.LVL185:
+ 334:ili9341.c     ****   int16_t ddF_x = 1;
+ 335:ili9341.c     ****   int16_t ddF_y = -2 * r;
+ 1468               		.loc 1 335 0
+ 1469 0624 CA01      		movw r24,r20
+ 1470 0626 9195      		neg r25
+ 1471 0628 8195      		neg r24
+ 1472 062a 9109      		sbc r25,__zero_reg__
+ 1473 062c 9C01      		movw r18,r24
+ 1474               	.LVL186:
+ 1475 062e 220F      		lsl r18
+ 1476 0630 331F      		rol r19
+ 1477 0632 3C83      		std Y+4,r19
+ 1478 0634 2B83      		std Y+3,r18
+ 1479               	.LVL187:
+ 336:ili9341.c     ****   int16_t x = 0;
+ 337:ili9341.c     ****   int16_t y = r;
+ 338:ili9341.c     **** 
+ 339:ili9341.c     ****   ili9341_drawpixel(x0  , y0+r, color);
+ 1480               		.loc 1 339 0
+ 1481 0636 BA01      		movw r22,r20
+ 1482               	.LVL188:
+ 1483 0638 6C0D      		add r22,r12
+ 1484 063a 7D1D      		adc r23,r13
+ 1485 063c A801      		movw r20,r16
+ 1486               	.LVL189:
+ 1487 063e C701      		movw r24,r14
+ 1488 0640 0E94 0000 		call ili9341_drawpixel
+ 1489               	.LVL190:
+ 340:ili9341.c     ****   ili9341_drawpixel(x0  , y0-r, color);
+ 1490               		.loc 1 340 0
+ 1491 0644 B601      		movw r22,r12
+ 1492 0646 8D81      		ldd r24,Y+5
+ 1493 0648 9E81      		ldd r25,Y+6
+ 1494 064a 681B      		sub r22,r24
+ 1495 064c 790B      		sbc r23,r25
+ 1496 064e A801      		movw r20,r16
+ 1497 0650 C701      		movw r24,r14
+ 1498 0652 0E94 0000 		call ili9341_drawpixel
+ 1499               	.LVL191:
+ 341:ili9341.c     ****   ili9341_drawpixel(x0+r, y0  , color);
+ 1500               		.loc 1 341 0
+ 1501 0656 A801      		movw r20,r16
+ 1502 0658 B601      		movw r22,r12
+ 1503 065a 8D81      		ldd r24,Y+5
+ 1504 065c 9E81      		ldd r25,Y+6
+ 1505 065e 8E0D      		add r24,r14
+ 1506 0660 9F1D      		adc r25,r15
+ 1507 0662 0E94 0000 		call ili9341_drawpixel
+ 1508               	.LVL192:
+ 342:ili9341.c     ****   ili9341_drawpixel(x0-r, y0  , color);
+ 1509               		.loc 1 342 0
+ 1510 0666 A801      		movw r20,r16
+ 1511 0668 B601      		movw r22,r12
+ 1512 066a C701      		movw r24,r14
+ 1513 066c 2D81      		ldd r18,Y+5
+ 1514 066e 3E81      		ldd r19,Y+6
+ 1515 0670 821B      		sub r24,r18
+ 1516 0672 930B      		sbc r25,r19
+ 1517 0674 0E94 0000 		call ili9341_drawpixel
+ 1518               	.LVL193:
+ 336:ili9341.c     ****   int16_t y = r;
+ 1519               		.loc 1 336 0
+ 1520 0678 B12C      		mov r11,__zero_reg__
+ 1521 067a A12C      		mov r10,__zero_reg__
+ 334:ili9341.c     ****   int16_t ddF_y = -2 * r;
+ 1522               		.loc 1 334 0
+ 1523 067c 81E0      		ldi r24,lo8(1)
+ 1524 067e 90E0      		ldi r25,0
+ 1525 0680 9A83      		std Y+2,r25
+ 1526 0682 8983      		std Y+1,r24
+ 1527               	.LVL194:
+ 1528               	.L49:
+ 343:ili9341.c     **** 
+ 344:ili9341.c     ****   while (x<y) {
+ 1529               		.loc 1 344 0
+ 1530 0684 8D81      		ldd r24,Y+5
+ 1531 0686 9E81      		ldd r25,Y+6
+ 1532 0688 A816      		cp r10,r24
+ 1533 068a B906      		cpc r11,r25
+ 1534 068c 04F0      		brlt .L51
+ 1535               	/* epilogue start */
+ 345:ili9341.c     ****     if (f >= 0) {
+ 346:ili9341.c     ****       y--;
+ 347:ili9341.c     ****       ddF_y += 2;
+ 348:ili9341.c     ****       f += ddF_y;
+ 349:ili9341.c     ****     }
+ 350:ili9341.c     ****     x++;
+ 351:ili9341.c     ****     ddF_x += 2;
+ 352:ili9341.c     ****     f += ddF_x;
+ 353:ili9341.c     **** 
+ 354:ili9341.c     ****     ili9341_drawpixel(x0 + x, y0 + y, color);
+ 355:ili9341.c     ****     ili9341_drawpixel(x0 - x, y0 + y, color);
+ 356:ili9341.c     ****     ili9341_drawpixel(x0 + x, y0 - y, color);
+ 357:ili9341.c     ****     ili9341_drawpixel(x0 - x, y0 - y, color);
+ 358:ili9341.c     ****     ili9341_drawpixel(x0 + y, y0 + x, color);
+ 359:ili9341.c     ****     ili9341_drawpixel(x0 - y, y0 + x, color);
+ 360:ili9341.c     ****     ili9341_drawpixel(x0 + y, y0 - x, color);
+ 361:ili9341.c     ****     ili9341_drawpixel(x0 - y, y0 - x, color);
+ 362:ili9341.c     ****   }
+ 363:ili9341.c     **** }
+ 1536               		.loc 1 363 0
+ 1537 068e 2696      		adiw r28,6
+ 1538               	.LVL195:
+ 1539 0690 0FB6      		in __tmp_reg__,__SREG__
+ 1540 0692 F894      		cli
+ 1541 0694 DEBF      		out __SP_H__,r29
+ 1542 0696 0FBE      		out __SREG__,__tmp_reg__
+ 1543 0698 CDBF      		out __SP_L__,r28
+ 1544               	.LVL196:
+ 1545 069a DF91      		pop r29
+ 1546 069c CF91      		pop r28
+ 1547 069e 1F91      		pop r17
+ 1548 06a0 0F91      		pop r16
+ 1549               	.LVL197:
+ 1550 06a2 FF90      		pop r15
+ 1551 06a4 EF90      		pop r14
+ 1552               	.LVL198:
+ 1553 06a6 DF90      		pop r13
+ 1554 06a8 CF90      		pop r12
+ 1555               	.LVL199:
+ 1556 06aa BF90      		pop r11
+ 1557 06ac AF90      		pop r10
+ 1558               	.LVL200:
+ 1559 06ae 9F90      		pop r9
+ 1560 06b0 8F90      		pop r8
+ 1561 06b2 7F90      		pop r7
+ 1562 06b4 6F90      		pop r6
+ 1563               	.LVL201:
+ 1564 06b6 5F90      		pop r5
+ 1565 06b8 4F90      		pop r4
+ 1566 06ba 3F90      		pop r3
+ 1567 06bc 2F90      		pop r2
+ 1568 06be 0895      		ret
+ 1569               	.LVL202:
+ 1570               	.L51:
+ 345:ili9341.c     ****     if (f >= 0) {
+ 1571               		.loc 1 345 0
+ 1572 06c0 77FC      		sbrc r7,7
+ 1573 06c2 00C0      		rjmp .L50
+ 346:ili9341.c     ****       ddF_y += 2;
+ 1574               		.loc 1 346 0
+ 1575 06c4 2D81      		ldd r18,Y+5
+ 1576 06c6 3E81      		ldd r19,Y+6
+ 1577 06c8 2150      		subi r18,1
+ 1578 06ca 3109      		sbc r19,__zero_reg__
+ 1579 06cc 3E83      		std Y+6,r19
+ 1580 06ce 2D83      		std Y+5,r18
+ 1581               	.LVL203:
+ 347:ili9341.c     ****       f += ddF_y;
+ 1582               		.loc 1 347 0
+ 1583 06d0 8B81      		ldd r24,Y+3
+ 1584 06d2 9C81      		ldd r25,Y+4
+ 1585 06d4 0296      		adiw r24,2
+ 1586 06d6 9C83      		std Y+4,r25
+ 1587 06d8 8B83      		std Y+3,r24
+ 1588               	.LVL204:
+ 348:ili9341.c     ****     }
+ 1589               		.loc 1 348 0
+ 1590 06da 680E      		add r6,r24
+ 1591 06dc 791E      		adc r7,r25
+ 1592               	.LVL205:
+ 1593               	.L50:
+ 350:ili9341.c     ****     ddF_x += 2;
+ 1594               		.loc 1 350 0
+ 1595 06de 9FEF      		ldi r25,-1
+ 1596 06e0 A91A      		sub r10,r25
+ 1597 06e2 B90A      		sbc r11,r25
+ 1598               	.LVL206:
+ 351:ili9341.c     ****     f += ddF_x;
+ 1599               		.loc 1 351 0
+ 1600 06e4 2981      		ldd r18,Y+1
+ 1601 06e6 3A81      		ldd r19,Y+2
+ 1602 06e8 2E5F      		subi r18,-2
+ 1603 06ea 3F4F      		sbci r19,-1
+ 1604 06ec 3A83      		std Y+2,r19
+ 1605 06ee 2983      		std Y+1,r18
+ 1606               	.LVL207:
+ 352:ili9341.c     **** 
+ 1607               		.loc 1 352 0
+ 1608 06f0 620E      		add r6,r18
+ 1609 06f2 731E      		adc r7,r19
+ 1610               	.LVL208:
+ 1611 06f4 2701      		movw r4,r14
+ 1612 06f6 4A0C      		add r4,r10
+ 1613 06f8 5B1C      		adc r5,r11
+ 354:ili9341.c     ****     ili9341_drawpixel(x0 - x, y0 + y, color);
+ 1614               		.loc 1 354 0
+ 1615 06fa A801      		movw r20,r16
+ 1616 06fc 8D80      		ldd r8,Y+5
+ 1617 06fe 9E80      		ldd r9,Y+6
+ 1618 0700 8C0C      		add r8,r12
+ 1619 0702 9D1C      		adc r9,r13
+ 1620 0704 B401      		movw r22,r8
+ 1621 0706 C201      		movw r24,r4
+ 1622 0708 0E94 0000 		call ili9341_drawpixel
+ 1623               	.LVL209:
+ 1624 070c 1701      		movw r2,r14
+ 1625 070e 2A18      		sub r2,r10
+ 1626 0710 3B08      		sbc r3,r11
+ 355:ili9341.c     ****     ili9341_drawpixel(x0 + x, y0 - y, color);
+ 1627               		.loc 1 355 0
+ 1628 0712 A801      		movw r20,r16
+ 1629 0714 B401      		movw r22,r8
+ 1630 0716 C101      		movw r24,r2
+ 1631 0718 0E94 0000 		call ili9341_drawpixel
+ 1632               	.LVL210:
+ 356:ili9341.c     ****     ili9341_drawpixel(x0 - x, y0 - y, color);
+ 1633               		.loc 1 356 0
+ 1634 071c A801      		movw r20,r16
+ 1635 071e 4601      		movw r8,r12
+ 1636 0720 8D81      		ldd r24,Y+5
+ 1637 0722 9E81      		ldd r25,Y+6
+ 1638 0724 881A      		sub r8,r24
+ 1639 0726 990A      		sbc r9,r25
+ 1640 0728 B401      		movw r22,r8
+ 1641 072a C201      		movw r24,r4
+ 1642 072c 0E94 0000 		call ili9341_drawpixel
+ 1643               	.LVL211:
+ 357:ili9341.c     ****     ili9341_drawpixel(x0 + y, y0 + x, color);
+ 1644               		.loc 1 357 0
+ 1645 0730 A801      		movw r20,r16
+ 1646 0732 B401      		movw r22,r8
+ 1647 0734 C101      		movw r24,r2
+ 1648 0736 0E94 0000 		call ili9341_drawpixel
+ 1649               	.LVL212:
+ 1650 073a 4601      		movw r8,r12
+ 1651 073c 8A0C      		add r8,r10
+ 1652 073e 9B1C      		adc r9,r11
+ 358:ili9341.c     ****     ili9341_drawpixel(x0 - y, y0 + x, color);
+ 1653               		.loc 1 358 0
+ 1654 0740 A801      		movw r20,r16
+ 1655 0742 B401      		movw r22,r8
+ 1656 0744 4D80      		ldd r4,Y+5
+ 1657 0746 5E80      		ldd r5,Y+6
+ 1658 0748 4E0C      		add r4,r14
+ 1659 074a 5F1C      		adc r5,r15
+ 1660 074c C201      		movw r24,r4
+ 1661 074e 0E94 0000 		call ili9341_drawpixel
+ 1662               	.LVL213:
+ 359:ili9341.c     ****     ili9341_drawpixel(x0 + y, y0 - x, color);
+ 1663               		.loc 1 359 0
+ 1664 0752 A801      		movw r20,r16
+ 1665 0754 B401      		movw r22,r8
+ 1666 0756 1701      		movw r2,r14
+ 1667 0758 2D81      		ldd r18,Y+5
+ 1668 075a 3E81      		ldd r19,Y+6
+ 1669 075c 221A      		sub r2,r18
+ 1670 075e 330A      		sbc r3,r19
+ 1671 0760 C101      		movw r24,r2
+ 1672 0762 0E94 0000 		call ili9341_drawpixel
+ 1673               	.LVL214:
+ 1674 0766 4601      		movw r8,r12
+ 1675 0768 8A18      		sub r8,r10
+ 1676 076a 9B08      		sbc r9,r11
+ 360:ili9341.c     ****     ili9341_drawpixel(x0 - y, y0 - x, color);
+ 1677               		.loc 1 360 0
+ 1678 076c A801      		movw r20,r16
+ 1679 076e B401      		movw r22,r8
+ 1680 0770 C201      		movw r24,r4
+ 1681 0772 0E94 0000 		call ili9341_drawpixel
+ 1682               	.LVL215:
+ 361:ili9341.c     ****   }
+ 1683               		.loc 1 361 0
+ 1684 0776 A801      		movw r20,r16
+ 1685 0778 B401      		movw r22,r8
+ 1686 077a C101      		movw r24,r2
+ 1687 077c 0E94 0000 		call ili9341_drawpixel
+ 1688               	.LVL216:
+ 1689 0780 00C0      		rjmp .L49
+ 1690               		.cfi_endproc
+ 1691               	.LFE22:
+ 1693               	.global	ili9341_drawCircleHelper
+ 1695               	ili9341_drawCircleHelper:
+ 1696               	.LFB23:
+ 364:ili9341.c     **** 
+ 365:ili9341.c     **** //DRaw Circle Helper
+ 366:ili9341.c     **** void ili9341_drawCircleHelper( int16_t x0, int16_t y0, int16_t r, uint8_t cornername, uint16_t colo
+ 367:ili9341.c     **** {
+ 1697               		.loc 1 367 0
+ 1698               		.cfi_startproc
+ 1699               	.LVL217:
+ 1700 0782 2F92      		push r2
+ 1701               	.LCFI53:
+ 1702               		.cfi_def_cfa_offset 3
+ 1703               		.cfi_offset 2, -2
+ 1704 0784 3F92      		push r3
+ 1705               	.LCFI54:
+ 1706               		.cfi_def_cfa_offset 4
+ 1707               		.cfi_offset 3, -3
+ 1708 0786 4F92      		push r4
+ 1709               	.LCFI55:
+ 1710               		.cfi_def_cfa_offset 5
+ 1711               		.cfi_offset 4, -4
+ 1712 0788 5F92      		push r5
+ 1713               	.LCFI56:
+ 1714               		.cfi_def_cfa_offset 6
+ 1715               		.cfi_offset 5, -5
+ 1716 078a 6F92      		push r6
+ 1717               	.LCFI57:
+ 1718               		.cfi_def_cfa_offset 7
+ 1719               		.cfi_offset 6, -6
+ 1720 078c 7F92      		push r7
+ 1721               	.LCFI58:
+ 1722               		.cfi_def_cfa_offset 8
+ 1723               		.cfi_offset 7, -7
+ 1724 078e 8F92      		push r8
+ 1725               	.LCFI59:
+ 1726               		.cfi_def_cfa_offset 9
+ 1727               		.cfi_offset 8, -8
+ 1728 0790 9F92      		push r9
+ 1729               	.LCFI60:
+ 1730               		.cfi_def_cfa_offset 10
+ 1731               		.cfi_offset 9, -9
+ 1732 0792 AF92      		push r10
+ 1733               	.LCFI61:
+ 1734               		.cfi_def_cfa_offset 11
+ 1735               		.cfi_offset 10, -10
+ 1736 0794 BF92      		push r11
+ 1737               	.LCFI62:
+ 1738               		.cfi_def_cfa_offset 12
+ 1739               		.cfi_offset 11, -11
+ 1740 0796 CF92      		push r12
+ 1741               	.LCFI63:
+ 1742               		.cfi_def_cfa_offset 13
+ 1743               		.cfi_offset 12, -12
+ 1744 0798 DF92      		push r13
+ 1745               	.LCFI64:
+ 1746               		.cfi_def_cfa_offset 14
+ 1747               		.cfi_offset 13, -13
+ 1748 079a EF92      		push r14
+ 1749               	.LCFI65:
+ 1750               		.cfi_def_cfa_offset 15
+ 1751               		.cfi_offset 14, -14
+ 1752 079c FF92      		push r15
+ 1753               	.LCFI66:
+ 1754               		.cfi_def_cfa_offset 16
+ 1755               		.cfi_offset 15, -15
+ 1756 079e 0F93      		push r16
+ 1757               	.LCFI67:
+ 1758               		.cfi_def_cfa_offset 17
+ 1759               		.cfi_offset 16, -16
+ 1760 07a0 1F93      		push r17
+ 1761               	.LCFI68:
+ 1762               		.cfi_def_cfa_offset 18
+ 1763               		.cfi_offset 17, -17
+ 1764 07a2 CF93      		push r28
+ 1765               	.LCFI69:
+ 1766               		.cfi_def_cfa_offset 19
+ 1767               		.cfi_offset 28, -18
+ 1768 07a4 DF93      		push r29
+ 1769               	.LCFI70:
+ 1770               		.cfi_def_cfa_offset 20
+ 1771               		.cfi_offset 29, -19
+ 1772 07a6 00D0      		rcall .
+ 1773 07a8 00D0      		rcall .
+ 1774               	.LCFI71:
+ 1775               		.cfi_def_cfa_offset 24
+ 1776 07aa CDB7      		in r28,__SP_L__
+ 1777 07ac DEB7      		in r29,__SP_H__
+ 1778               	.LCFI72:
+ 1779               		.cfi_def_cfa_register 28
+ 1780               	/* prologue: function */
+ 1781               	/* frame size = 4 */
+ 1782               	/* stack size = 22 */
+ 1783               	.L__stack_usage = 22
+ 1784 07ae 6C01      		movw r12,r24
+ 1785 07b0 5B01      		movw r10,r22
+ 1786 07b2 5C83      		std Y+4,r21
+ 1787 07b4 4B83      		std Y+3,r20
+ 368:ili9341.c     ****   int16_t f     = 1 - r;
+ 1788               		.loc 1 368 0
+ 1789 07b6 81E0      		ldi r24,lo8(1)
+ 1790 07b8 90E0      		ldi r25,0
+ 1791               	.LVL218:
+ 1792 07ba 4C01      		movw r8,r24
+ 1793 07bc 841A      		sub r8,r20
+ 1794 07be 950A      		sbc r9,r21
+ 1795               	.LVL219:
+ 369:ili9341.c     ****   int16_t ddF_x = 1;
+ 370:ili9341.c     ****   int16_t ddF_y = -2 * r;
+ 1796               		.loc 1 370 0
+ 1797 07c0 3A01      		movw r6,r20
+ 1798 07c2 7194      		neg r7
+ 1799 07c4 6194      		neg r6
+ 1800 07c6 7108      		sbc r7,__zero_reg__
+ 1801 07c8 660C      		lsl r6
+ 1802 07ca 771C      		rol r7
+ 1803               	.LVL220:
+ 371:ili9341.c     ****   int16_t x     = 0;
+ 1804               		.loc 1 371 0
+ 1805 07cc F12C      		mov r15,__zero_reg__
+ 1806 07ce E12C      		mov r14,__zero_reg__
+ 369:ili9341.c     ****   int16_t ddF_x = 1;
+ 1807               		.loc 1 369 0
+ 1808 07d0 4424      		clr r4
+ 1809 07d2 4394      		inc r4
+ 1810 07d4 512C      		mov r5,__zero_reg__
+ 372:ili9341.c     ****   int16_t y     = r;
+ 373:ili9341.c     **** 
+ 374:ili9341.c     ****   while (x<y) {
+ 375:ili9341.c     ****     if (f >= 0) {
+ 376:ili9341.c     ****       y--;
+ 377:ili9341.c     ****       ddF_y += 2;
+ 378:ili9341.c     ****       f     += ddF_y;
+ 379:ili9341.c     ****     }
+ 380:ili9341.c     ****     x++;
+ 381:ili9341.c     ****     ddF_x += 2;
+ 382:ili9341.c     ****     f     += ddF_x;
+ 383:ili9341.c     ****     if (cornername & 0x4) {
+ 1811               		.loc 1 383 0
+ 1812 07d6 322F      		mov r19,r18
+ 1813 07d8 3470      		andi r19,lo8(4)
+ 1814 07da 3983      		std Y+1,r19
+ 384:ili9341.c     ****       ili9341_drawpixel(x0 + x, y0 + y, color);
+ 385:ili9341.c     ****       ili9341_drawpixel(x0 + y, y0 + x, color);
+ 386:ili9341.c     ****     }
+ 387:ili9341.c     ****     if (cornername & 0x2) {
+ 1815               		.loc 1 387 0
+ 1816 07dc 422F      		mov r20,r18
+ 1817               	.LVL221:
+ 1818 07de 4270      		andi r20,lo8(2)
+ 1819 07e0 4A83      		std Y+2,r20
+ 388:ili9341.c     ****       ili9341_drawpixel(x0 + x, y0 - y, color);
+ 389:ili9341.c     ****       ili9341_drawpixel(x0 + y, y0 - x, color);
+ 390:ili9341.c     ****     }
+ 391:ili9341.c     ****     if (cornername & 0x8) {
+ 1820               		.loc 1 391 0
+ 1821 07e2 522F      		mov r21,r18
+ 1822 07e4 5870      		andi r21,lo8(8)
+ 1823 07e6 252E      		mov r2,r21
+ 392:ili9341.c     ****       ili9341_drawpixel(x0 - y, y0 + x, color);
+ 393:ili9341.c     ****       ili9341_drawpixel(x0 - x, y0 + y, color);
+ 394:ili9341.c     ****     }
+ 395:ili9341.c     ****     if (cornername & 0x1) {
+ 1824               		.loc 1 395 0
+ 1825 07e8 2170      		andi r18,lo8(1)
+ 1826               	.LVL222:
+ 1827 07ea 322E      		mov r3,r18
+ 1828               	.LVL223:
+ 1829               	.L53:
+ 374:ili9341.c     ****     if (f >= 0) {
+ 1830               		.loc 1 374 0
+ 1831 07ec 2B81      		ldd r18,Y+3
+ 1832 07ee 3C81      		ldd r19,Y+4
+ 1833 07f0 E216      		cp r14,r18
+ 1834 07f2 F306      		cpc r15,r19
+ 1835 07f4 04F0      		brlt .L59
+ 1836               	/* epilogue start */
+ 396:ili9341.c     ****       ili9341_drawpixel(x0 - y, y0 - x, color);
+ 397:ili9341.c     ****       ili9341_drawpixel(x0 - x, y0 - y, color);
+ 398:ili9341.c     ****     }
+ 399:ili9341.c     ****   }
+ 400:ili9341.c     **** }
+ 1837               		.loc 1 400 0
+ 1838 07f6 0F90      		pop __tmp_reg__
+ 1839 07f8 0F90      		pop __tmp_reg__
+ 1840 07fa 0F90      		pop __tmp_reg__
+ 1841 07fc 0F90      		pop __tmp_reg__
+ 1842 07fe DF91      		pop r29
+ 1843 0800 CF91      		pop r28
+ 1844               	.LVL224:
+ 1845 0802 1F91      		pop r17
+ 1846 0804 0F91      		pop r16
+ 1847               	.LVL225:
+ 1848 0806 FF90      		pop r15
+ 1849 0808 EF90      		pop r14
+ 1850               	.LVL226:
+ 1851 080a DF90      		pop r13
+ 1852 080c CF90      		pop r12
+ 1853               	.LVL227:
+ 1854 080e BF90      		pop r11
+ 1855 0810 AF90      		pop r10
+ 1856               	.LVL228:
+ 1857 0812 9F90      		pop r9
+ 1858 0814 8F90      		pop r8
+ 1859               	.LVL229:
+ 1860 0816 7F90      		pop r7
+ 1861 0818 6F90      		pop r6
+ 1862               	.LVL230:
+ 1863 081a 5F90      		pop r5
+ 1864 081c 4F90      		pop r4
+ 1865               	.LVL231:
+ 1866 081e 3F90      		pop r3
+ 1867 0820 2F90      		pop r2
+ 1868 0822 0895      		ret
+ 1869               	.LVL232:
+ 1870               	.L59:
+ 375:ili9341.c     ****       y--;
+ 1871               		.loc 1 375 0
+ 1872 0824 97FC      		sbrc r9,7
+ 1873 0826 00C0      		rjmp .L54
+ 376:ili9341.c     ****       ddF_y += 2;
+ 1874               		.loc 1 376 0
+ 1875 0828 8B81      		ldd r24,Y+3
+ 1876 082a 9C81      		ldd r25,Y+4
+ 1877 082c 0197      		sbiw r24,1
+ 1878 082e 9C83      		std Y+4,r25
+ 1879 0830 8B83      		std Y+3,r24
+ 1880               	.LVL233:
+ 377:ili9341.c     ****       f     += ddF_y;
+ 1881               		.loc 1 377 0
+ 1882 0832 92E0      		ldi r25,2
+ 1883 0834 690E      		add r6,r25
+ 1884 0836 711C      		adc r7,__zero_reg__
+ 1885               	.LVL234:
+ 378:ili9341.c     ****     }
+ 1886               		.loc 1 378 0
+ 1887 0838 860C      		add r8,r6
+ 1888 083a 971C      		adc r9,r7
+ 1889               	.LVL235:
+ 1890               	.L54:
+ 380:ili9341.c     ****     ddF_x += 2;
+ 1891               		.loc 1 380 0
+ 1892 083c 2FEF      		ldi r18,-1
+ 1893 083e E21A      		sub r14,r18
+ 1894 0840 F20A      		sbc r15,r18
+ 1895               	.LVL236:
+ 381:ili9341.c     ****     f     += ddF_x;
+ 1896               		.loc 1 381 0
+ 1897 0842 32E0      		ldi r19,2
+ 1898 0844 430E      		add r4,r19
+ 1899 0846 511C      		adc r5,__zero_reg__
+ 1900               	.LVL237:
+ 382:ili9341.c     ****     if (cornername & 0x4) {
+ 1901               		.loc 1 382 0
+ 1902 0848 840C      		add r8,r4
+ 1903 084a 951C      		adc r9,r5
+ 1904               	.LVL238:
+ 383:ili9341.c     ****       ili9341_drawpixel(x0 + x, y0 + y, color);
+ 1905               		.loc 1 383 0
+ 1906 084c 4981      		ldd r20,Y+1
+ 1907 084e 4423      		tst r20
+ 1908 0850 01F0      		breq .L55
+ 384:ili9341.c     ****       ili9341_drawpixel(x0 + y, y0 + x, color);
+ 1909               		.loc 1 384 0
+ 1910 0852 A801      		movw r20,r16
+ 1911 0854 6B81      		ldd r22,Y+3
+ 1912 0856 7C81      		ldd r23,Y+4
+ 1913 0858 6A0D      		add r22,r10
+ 1914 085a 7B1D      		adc r23,r11
+ 1915 085c C601      		movw r24,r12
+ 1916 085e 8E0D      		add r24,r14
+ 1917 0860 9F1D      		adc r25,r15
+ 1918 0862 0E94 0000 		call ili9341_drawpixel
+ 1919               	.LVL239:
+ 385:ili9341.c     ****     }
+ 1920               		.loc 1 385 0
+ 1921 0866 A801      		movw r20,r16
+ 1922 0868 B501      		movw r22,r10
+ 1923 086a 6E0D      		add r22,r14
+ 1924 086c 7F1D      		adc r23,r15
+ 1925 086e 8B81      		ldd r24,Y+3
+ 1926 0870 9C81      		ldd r25,Y+4
+ 1927 0872 8C0D      		add r24,r12
+ 1928 0874 9D1D      		adc r25,r13
+ 1929 0876 0E94 0000 		call ili9341_drawpixel
+ 1930               	.LVL240:
+ 1931               	.L55:
+ 387:ili9341.c     ****       ili9341_drawpixel(x0 + x, y0 - y, color);
+ 1932               		.loc 1 387 0
+ 1933 087a 5A81      		ldd r21,Y+2
+ 1934 087c 5523      		tst r21
+ 1935 087e 01F0      		breq .L56
+ 388:ili9341.c     ****       ili9341_drawpixel(x0 + y, y0 - x, color);
+ 1936               		.loc 1 388 0
+ 1937 0880 A801      		movw r20,r16
+ 1938 0882 B501      		movw r22,r10
+ 1939 0884 8B81      		ldd r24,Y+3
+ 1940 0886 9C81      		ldd r25,Y+4
+ 1941 0888 681B      		sub r22,r24
+ 1942 088a 790B      		sbc r23,r25
+ 1943 088c C601      		movw r24,r12
+ 1944 088e 8E0D      		add r24,r14
+ 1945 0890 9F1D      		adc r25,r15
+ 1946 0892 0E94 0000 		call ili9341_drawpixel
+ 1947               	.LVL241:
+ 389:ili9341.c     ****     }
+ 1948               		.loc 1 389 0
+ 1949 0896 A801      		movw r20,r16
+ 1950 0898 B501      		movw r22,r10
+ 1951 089a 6E19      		sub r22,r14
+ 1952 089c 7F09      		sbc r23,r15
+ 1953 089e 8B81      		ldd r24,Y+3
+ 1954 08a0 9C81      		ldd r25,Y+4
+ 1955 08a2 8C0D      		add r24,r12
+ 1956 08a4 9D1D      		adc r25,r13
+ 1957 08a6 0E94 0000 		call ili9341_drawpixel
+ 1958               	.LVL242:
+ 1959               	.L56:
+ 391:ili9341.c     ****       ili9341_drawpixel(x0 - y, y0 + x, color);
+ 1960               		.loc 1 391 0
+ 1961 08aa 2220      		tst r2
+ 1962 08ac 01F0      		breq .L57
+ 392:ili9341.c     ****       ili9341_drawpixel(x0 - x, y0 + y, color);
+ 1963               		.loc 1 392 0
+ 1964 08ae A801      		movw r20,r16
+ 1965 08b0 B501      		movw r22,r10
+ 1966 08b2 6E0D      		add r22,r14
+ 1967 08b4 7F1D      		adc r23,r15
+ 1968 08b6 C601      		movw r24,r12
+ 1969 08b8 2B81      		ldd r18,Y+3
+ 1970 08ba 3C81      		ldd r19,Y+4
+ 1971 08bc 821B      		sub r24,r18
+ 1972 08be 930B      		sbc r25,r19
+ 1973 08c0 0E94 0000 		call ili9341_drawpixel
+ 1974               	.LVL243:
+ 393:ili9341.c     ****     }
+ 1975               		.loc 1 393 0
+ 1976 08c4 A801      		movw r20,r16
+ 1977 08c6 6B81      		ldd r22,Y+3
+ 1978 08c8 7C81      		ldd r23,Y+4
+ 1979 08ca 6A0D      		add r22,r10
+ 1980 08cc 7B1D      		adc r23,r11
+ 1981 08ce C601      		movw r24,r12
+ 1982 08d0 8E19      		sub r24,r14
+ 1983 08d2 9F09      		sbc r25,r15
+ 1984 08d4 0E94 0000 		call ili9341_drawpixel
+ 1985               	.LVL244:
+ 1986               	.L57:
+ 395:ili9341.c     ****       ili9341_drawpixel(x0 - y, y0 - x, color);
+ 1987               		.loc 1 395 0
+ 1988 08d8 3320      		tst r3
+ 1989 08da 01F4      		brne .+2
+ 1990 08dc 00C0      		rjmp .L53
+ 396:ili9341.c     ****       ili9341_drawpixel(x0 - x, y0 - y, color);
+ 1991               		.loc 1 396 0
+ 1992 08de A801      		movw r20,r16
+ 1993 08e0 B501      		movw r22,r10
+ 1994 08e2 6E19      		sub r22,r14
+ 1995 08e4 7F09      		sbc r23,r15
+ 1996 08e6 C601      		movw r24,r12
+ 1997 08e8 2B81      		ldd r18,Y+3
+ 1998 08ea 3C81      		ldd r19,Y+4
+ 1999 08ec 821B      		sub r24,r18
+ 2000 08ee 930B      		sbc r25,r19
+ 2001 08f0 0E94 0000 		call ili9341_drawpixel
+ 2002               	.LVL245:
+ 397:ili9341.c     ****     }
+ 2003               		.loc 1 397 0
+ 2004 08f4 A801      		movw r20,r16
+ 2005 08f6 B501      		movw r22,r10
+ 2006 08f8 8B81      		ldd r24,Y+3
+ 2007 08fa 9C81      		ldd r25,Y+4
+ 2008 08fc 681B      		sub r22,r24
+ 2009 08fe 790B      		sbc r23,r25
+ 2010 0900 C601      		movw r24,r12
+ 2011 0902 8E19      		sub r24,r14
+ 2012 0904 9F09      		sbc r25,r15
+ 2013 0906 0E94 0000 		call ili9341_drawpixel
+ 2014               	.LVL246:
+ 2015 090a 00C0      		rjmp .L53
+ 2016               		.cfi_endproc
+ 2017               	.LFE23:
+ 2019               	.global	ili9341_drawLine
+ 2021               	ili9341_drawLine:
+ 2022               	.LFB28:
+ 401:ili9341.c     **** 
+ 402:ili9341.c     **** void ili9341_fillCircle(int16_t x0, int16_t y0, int16_t r, uint16_t color) 
+ 403:ili9341.c     **** {
+ 404:ili9341.c     ****   ili9341_drawvline(x0, y0-r, 2*r+1, color);
+ 405:ili9341.c     ****   ili9341_fillCircleHelper(x0, y0, r, 3, 0, color);
+ 406:ili9341.c     **** }
+ 407:ili9341.c     **** 
+ 408:ili9341.c     **** // Used to do circles and roundrects
+ 409:ili9341.c     **** void ili9341_fillCircleHelper(int16_t x0, int16_t y0, int16_t r, uint8_t cornername, int16_t delta,
+ 410:ili9341.c     **** {
+ 411:ili9341.c     **** 
+ 412:ili9341.c     ****   int16_t f     = 1 - r;
+ 413:ili9341.c     ****   int16_t ddF_x = 1;
+ 414:ili9341.c     ****   int16_t ddF_y = -2 * r;
+ 415:ili9341.c     ****   int16_t x     = 0;
+ 416:ili9341.c     ****   int16_t y     = r;
+ 417:ili9341.c     **** 
+ 418:ili9341.c     ****   while (x<y) {
+ 419:ili9341.c     ****     if (f >= 0) {
+ 420:ili9341.c     ****       y--;
+ 421:ili9341.c     ****       ddF_y += 2;
+ 422:ili9341.c     ****       f     += ddF_y;
+ 423:ili9341.c     ****     }
+ 424:ili9341.c     ****     x++;
+ 425:ili9341.c     ****     ddF_x += 2;
+ 426:ili9341.c     ****     f     += ddF_x;
+ 427:ili9341.c     **** 
+ 428:ili9341.c     ****     if (cornername & 0x1) {
+ 429:ili9341.c     ****       ili9341_drawFastVLine(x0+x, y0-y, 2*y+1+delta, color);
+ 430:ili9341.c     ****       ili9341_drawFastVLine(x0+y, y0-x, 2*x+1+delta, color);
+ 431:ili9341.c     ****     }
+ 432:ili9341.c     ****     if (cornername & 0x2) {
+ 433:ili9341.c     ****       ili9341_drawFastVLine(x0-x, y0-y, 2*y+1+delta, color);
+ 434:ili9341.c     ****       ili9341_drawFastVLine(x0-y, y0-x, 2*x+1+delta, color);
+ 435:ili9341.c     ****     }
+ 436:ili9341.c     ****   }
+ 437:ili9341.c     **** }
+ 438:ili9341.c     **** 
+ 439:ili9341.c     **** 
+ 440:ili9341.c     **** void ili9341_drawFastVLine(int16_t x, int16_t y, int16_t h, uint16_t color) 
+ 441:ili9341.c     **** {
+ 442:ili9341.c     ****   // Update in subclasses if desired!
+ 443:ili9341.c     ****   ili9341_drawLine(x, y, x, y+h-1, color);
+ 444:ili9341.c     **** }
+ 445:ili9341.c     **** 
+ 446:ili9341.c     **** void ili9341_drawFastHLine(int16_t x, int16_t y, int16_t w, uint16_t color) 
+ 447:ili9341.c     **** {
+ 448:ili9341.c     ****   // Update in subclasses if desired!
+ 449:ili9341.c     ****   ili9341_drawLine(x, y, x+w-1, y, color);
+ 450:ili9341.c     **** }
+ 451:ili9341.c     **** 
+ 452:ili9341.c     **** 
+ 453:ili9341.c     **** // Bresenham's algorithm - thx wikpedia
+ 454:ili9341.c     **** void ili9341_drawLine(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) 
+ 455:ili9341.c     **** {
+ 2023               		.loc 1 455 0
+ 2024               		.cfi_startproc
+ 2025               	.LVL247:
+ 2026 090c 2F92      		push r2
+ 2027               	.LCFI73:
+ 2028               		.cfi_def_cfa_offset 3
+ 2029               		.cfi_offset 2, -2
+ 2030 090e 3F92      		push r3
+ 2031               	.LCFI74:
+ 2032               		.cfi_def_cfa_offset 4
+ 2033               		.cfi_offset 3, -3
+ 2034 0910 4F92      		push r4
+ 2035               	.LCFI75:
+ 2036               		.cfi_def_cfa_offset 5
+ 2037               		.cfi_offset 4, -4
+ 2038 0912 5F92      		push r5
+ 2039               	.LCFI76:
+ 2040               		.cfi_def_cfa_offset 6
+ 2041               		.cfi_offset 5, -5
+ 2042 0914 6F92      		push r6
+ 2043               	.LCFI77:
+ 2044               		.cfi_def_cfa_offset 7
+ 2045               		.cfi_offset 6, -6
+ 2046 0916 7F92      		push r7
+ 2047               	.LCFI78:
+ 2048               		.cfi_def_cfa_offset 8
+ 2049               		.cfi_offset 7, -7
+ 2050 0918 8F92      		push r8
+ 2051               	.LCFI79:
+ 2052               		.cfi_def_cfa_offset 9
+ 2053               		.cfi_offset 8, -8
+ 2054 091a 9F92      		push r9
+ 2055               	.LCFI80:
+ 2056               		.cfi_def_cfa_offset 10
+ 2057               		.cfi_offset 9, -9
+ 2058 091c AF92      		push r10
+ 2059               	.LCFI81:
+ 2060               		.cfi_def_cfa_offset 11
+ 2061               		.cfi_offset 10, -10
+ 2062 091e BF92      		push r11
+ 2063               	.LCFI82:
+ 2064               		.cfi_def_cfa_offset 12
+ 2065               		.cfi_offset 11, -11
+ 2066 0920 CF92      		push r12
+ 2067               	.LCFI83:
+ 2068               		.cfi_def_cfa_offset 13
+ 2069               		.cfi_offset 12, -12
+ 2070 0922 DF92      		push r13
+ 2071               	.LCFI84:
+ 2072               		.cfi_def_cfa_offset 14
+ 2073               		.cfi_offset 13, -13
+ 2074 0924 EF92      		push r14
+ 2075               	.LCFI85:
+ 2076               		.cfi_def_cfa_offset 15
+ 2077               		.cfi_offset 14, -14
+ 2078 0926 FF92      		push r15
+ 2079               	.LCFI86:
+ 2080               		.cfi_def_cfa_offset 16
+ 2081               		.cfi_offset 15, -15
+ 2082 0928 0F93      		push r16
+ 2083               	.LCFI87:
+ 2084               		.cfi_def_cfa_offset 17
+ 2085               		.cfi_offset 16, -16
+ 2086 092a 1F93      		push r17
+ 2087               	.LCFI88:
+ 2088               		.cfi_def_cfa_offset 18
+ 2089               		.cfi_offset 17, -17
+ 2090 092c CF93      		push r28
+ 2091               	.LCFI89:
+ 2092               		.cfi_def_cfa_offset 19
+ 2093               		.cfi_offset 28, -18
+ 2094 092e DF93      		push r29
+ 2095               	.LCFI90:
+ 2096               		.cfi_def_cfa_offset 20
+ 2097               		.cfi_offset 29, -19
+ 2098 0930 00D0      		rcall .
+ 2099 0932 00D0      		rcall .
+ 2100               	.LCFI91:
+ 2101               		.cfi_def_cfa_offset 24
+ 2102 0934 CDB7      		in r28,__SP_L__
+ 2103 0936 DEB7      		in r29,__SP_H__
+ 2104               	.LCFI92:
+ 2105               		.cfi_def_cfa_register 28
+ 2106               	/* prologue: function */
+ 2107               	/* frame size = 4 */
+ 2108               	/* stack size = 22 */
+ 2109               	.L__stack_usage = 22
+ 2110 0938 6B01      		movw r12,r22
+ 2111 093a 7A01      		movw r14,r20
+ 2112 093c 3C83      		std Y+4,r19
+ 2113 093e 2B83      		std Y+3,r18
+ 2114 0940 5801      		movw r10,r16
+ 456:ili9341.c     ****   int16_t steep = abs(y1 - y0) > abs(x1 - x0);
+ 2115               		.loc 1 456 0
+ 2116 0942 8901      		movw r16,r18
+ 2117               	.LVL248:
+ 2118 0944 061B      		sub r16,r22
+ 2119 0946 170B      		sbc r17,r23
+ 2120 0948 17FF      		sbrs r17,7
+ 2121 094a 00C0      		rjmp .L73
+ 2122 094c 1195      		neg r17
+ 2123 094e 0195      		neg r16
+ 2124 0950 1109      		sbc r17,__zero_reg__
+ 2125               	.L73:
+ 2126 0952 4701      		movw r8,r14
+ 2127 0954 881A      		sub r8,r24
+ 2128 0956 990A      		sbc r9,r25
+ 2129 0958 97FE      		sbrs r9,7
+ 2130 095a 00C0      		rjmp .L74
+ 2131 095c 9194      		neg r9
+ 2132 095e 8194      		neg r8
+ 2133 0960 9108      		sbc r9,__zero_reg__
+ 2134               	.L74:
+ 2135               	.LVL249:
+ 457:ili9341.c     ****   if (steep) {
+ 2136               		.loc 1 457 0
+ 2137 0962 8016      		cp r8,r16
+ 2138 0964 9106      		cpc r9,r17
+ 2139 0966 04F0      		brlt .L75
+ 2140 0968 3B81      		ldd r19,Y+3
+ 2141 096a 2C81      		ldd r18,Y+4
+ 2142               	.LVL250:
+ 2143 096c FC82      		std Y+4,r15
+ 2144 096e EB82      		std Y+3,r14
+ 2145               	.LVL251:
+ 2146 0970 E32E      		mov r14,r19
+ 2147 0972 F22E      		mov r15,r18
+ 2148 0974 3C2D      		mov r19,r12
+ 2149 0976 2D2D      		mov r18,r13
+ 2150 0978 6C01      		movw r12,r24
+ 2151 097a 832F      		mov r24,r19
+ 2152               	.LVL252:
+ 2153 097c 922F      		mov r25,r18
+ 2154               	.LVL253:
+ 2155               	.L75:
+ 458:ili9341.c     ****     _swap_int16_t(x0, y0);
+ 459:ili9341.c     ****     _swap_int16_t(x1, y1);
+ 460:ili9341.c     ****   }
+ 461:ili9341.c     **** 
+ 462:ili9341.c     ****   if (x0 > x1) {
+ 2156               		.loc 1 462 0
+ 2157 097e 2B81      		ldd r18,Y+3
+ 2158 0980 3C81      		ldd r19,Y+4
+ 2159 0982 2C15      		cp r18,r12
+ 2160 0984 3D05      		cpc r19,r13
+ 2161 0986 04F0      		brlt .L76
+ 2162 0988 3E2D      		mov r19,r14
+ 2163 098a 2F2D      		mov r18,r15
+ 2164 098c 7C01      		movw r14,r24
+ 2165               	.LVL254:
+ 2166 098e 832F      		mov r24,r19
+ 2167               	.LVL255:
+ 2168 0990 922F      		mov r25,r18
+ 2169 0992 3B81      		ldd r19,Y+3
+ 2170 0994 2C81      		ldd r18,Y+4
+ 2171 0996 DC82      		std Y+4,r13
+ 2172 0998 CB82      		std Y+3,r12
+ 2173               	.LVL256:
+ 2174 099a C32E      		mov r12,r19
+ 2175               	.LVL257:
+ 2176 099c D22E      		mov r13,r18
+ 2177               	.LVL258:
+ 2178               	.L76:
+ 463:ili9341.c     ****     _swap_int16_t(x0, x1);
+ 464:ili9341.c     ****     _swap_int16_t(y0, y1);
+ 465:ili9341.c     ****   }
+ 466:ili9341.c     **** 
+ 467:ili9341.c     ****   int16_t dx, dy;
+ 468:ili9341.c     ****   dx = x1 - x0;
+ 2179               		.loc 1 468 0
+ 2180 099e 1601      		movw r2,r12
+ 2181 09a0 2B81      		ldd r18,Y+3
+ 2182 09a2 3C81      		ldd r19,Y+4
+ 2183 09a4 221A      		sub r2,r18
+ 2184 09a6 330A      		sbc r3,r19
+ 2185               	.LVL259:
+ 469:ili9341.c     ****   dy = abs(y1 - y0);
+ 2186               		.loc 1 469 0
+ 2187 09a8 2C01      		movw r4,r24
+ 2188 09aa 4E18      		sub r4,r14
+ 2189 09ac 5F08      		sbc r5,r15
+ 2190 09ae 57FE      		sbrs r5,7
+ 2191 09b0 00C0      		rjmp .L77
+ 2192 09b2 5194      		neg r5
+ 2193 09b4 4194      		neg r4
+ 2194 09b6 5108      		sbc r5,__zero_reg__
+ 2195               	.L77:
+ 2196               	.LVL260:
+ 470:ili9341.c     **** 
+ 471:ili9341.c     ****   int16_t err = dx / 2;
+ 2197               		.loc 1 471 0
+ 2198 09b8 3101      		movw r6,r2
+ 2199 09ba 37FE      		sbrs r3,7
+ 2200 09bc 00C0      		rjmp .L78
+ 2201 09be 3FEF      		ldi r19,-1
+ 2202 09c0 631A      		sub r6,r19
+ 2203 09c2 730A      		sbc r7,r19
+ 2204               	.L78:
+ 2205 09c4 7594      		asr r7
+ 2206 09c6 6794      		ror r6
+ 2207               	.LVL261:
+ 472:ili9341.c     ****   int16_t ystep;
+ 473:ili9341.c     **** 
+ 474:ili9341.c     ****   if (y0 < y1) {
+ 2208               		.loc 1 474 0
+ 2209 09c8 E816      		cp r14,r24
+ 2210 09ca F906      		cpc r15,r25
+ 2211 09cc 04F0      		brlt .L79
+ 475:ili9341.c     ****     ystep = 1;
+ 476:ili9341.c     ****   } else {
+ 477:ili9341.c     ****     ystep = -1;
+ 2212               		.loc 1 477 0
+ 2213 09ce 8FEF      		ldi r24,lo8(-1)
+ 2214 09d0 9FEF      		ldi r25,lo8(-1)
+ 2215               	.LVL262:
+ 2216 09d2 9A83      		std Y+2,r25
+ 2217 09d4 8983      		std Y+1,r24
+ 2218               	.L84:
+ 2219               	.LVL263:
+ 478:ili9341.c     ****   }
+ 479:ili9341.c     **** 
+ 480:ili9341.c     ****   for (; x0<=x1; x0++) {
+ 2220               		.loc 1 480 0 discriminator 1
+ 2221 09d6 8B81      		ldd r24,Y+3
+ 2222 09d8 9C81      		ldd r25,Y+4
+ 2223 09da C816      		cp r12,r24
+ 2224 09dc D906      		cpc r13,r25
+ 2225 09de 04F4      		brge .L85
+ 2226               	/* epilogue start */
+ 481:ili9341.c     ****     if (steep) {
+ 482:ili9341.c     ****       ili9341_drawpixel(y0, x0, color);
+ 483:ili9341.c     ****     } else {
+ 484:ili9341.c     ****       ili9341_drawpixel(x0, y0, color);
+ 485:ili9341.c     ****     }
+ 486:ili9341.c     ****     err -= dy;
+ 487:ili9341.c     ****     if (err < 0) {
+ 488:ili9341.c     ****       y0 += ystep;
+ 489:ili9341.c     ****       err += dx;
+ 490:ili9341.c     ****     }
+ 491:ili9341.c     ****   }
+ 492:ili9341.c     **** }
+ 2227               		.loc 1 492 0
+ 2228 09e0 0F90      		pop __tmp_reg__
+ 2229 09e2 0F90      		pop __tmp_reg__
+ 2230 09e4 0F90      		pop __tmp_reg__
+ 2231 09e6 0F90      		pop __tmp_reg__
+ 2232 09e8 DF91      		pop r29
+ 2233 09ea CF91      		pop r28
+ 2234               	.LVL264:
+ 2235 09ec 1F91      		pop r17
+ 2236               	.LVL265:
+ 2237 09ee 0F91      		pop r16
+ 2238               	.LVL266:
+ 2239 09f0 FF90      		pop r15
+ 2240               	.LVL267:
+ 2241 09f2 EF90      		pop r14
+ 2242               	.LVL268:
+ 2243 09f4 DF90      		pop r13
+ 2244               	.LVL269:
+ 2245 09f6 CF90      		pop r12
+ 2246               	.LVL270:
+ 2247 09f8 BF90      		pop r11
+ 2248               	.LVL271:
+ 2249 09fa AF90      		pop r10
+ 2250               	.LVL272:
+ 2251 09fc 9F90      		pop r9
+ 2252               	.LVL273:
+ 2253 09fe 8F90      		pop r8
+ 2254               	.LVL274:
+ 2255 0a00 7F90      		pop r7
+ 2256               	.LVL275:
+ 2257 0a02 6F90      		pop r6
+ 2258               	.LVL276:
+ 2259 0a04 5F90      		pop r5
+ 2260               	.LVL277:
+ 2261 0a06 4F90      		pop r4
+ 2262               	.LVL278:
+ 2263 0a08 3F90      		pop r3
+ 2264               	.LVL279:
+ 2265 0a0a 2F90      		pop r2
+ 2266               	.LVL280:
+ 2267 0a0c 0895      		ret
+ 2268               	.LVL281:
+ 2269               	.L85:
+ 482:ili9341.c     ****     } else {
+ 2270               		.loc 1 482 0
+ 2271 0a0e A501      		movw r20,r10
+ 2272 0a10 6B81      		ldd r22,Y+3
+ 2273 0a12 7C81      		ldd r23,Y+4
+ 2274 0a14 C701      		movw r24,r14
+ 2275               	.LVL282:
+ 481:ili9341.c     ****     if (steep) {
+ 2276               		.loc 1 481 0
+ 2277 0a16 8016      		cp r8,r16
+ 2278 0a18 9106      		cpc r9,r17
+ 2279 0a1a 04F0      		brlt .L86
+ 484:ili9341.c     ****     }
+ 2280               		.loc 1 484 0
+ 2281 0a1c B701      		movw r22,r14
+ 2282 0a1e 8B81      		ldd r24,Y+3
+ 2283 0a20 9C81      		ldd r25,Y+4
+ 2284               	.L86:
+ 2285 0a22 0E94 0000 		call ili9341_drawpixel
+ 2286               	.LVL283:
+ 486:ili9341.c     ****     if (err < 0) {
+ 2287               		.loc 1 486 0
+ 2288 0a26 6418      		sub r6,r4
+ 2289 0a28 7508      		sbc r7,r5
+ 2290               	.LVL284:
+ 487:ili9341.c     ****       y0 += ystep;
+ 2291               		.loc 1 487 0
+ 2292 0a2a 77FE      		sbrs r7,7
+ 2293 0a2c 00C0      		rjmp .L83
+ 488:ili9341.c     ****       err += dx;
+ 2294               		.loc 1 488 0
+ 2295 0a2e 2981      		ldd r18,Y+1
+ 2296 0a30 3A81      		ldd r19,Y+2
+ 2297 0a32 E20E      		add r14,r18
+ 2298 0a34 F31E      		adc r15,r19
+ 2299               	.LVL285:
+ 489:ili9341.c     ****     }
+ 2300               		.loc 1 489 0
+ 2301 0a36 620C      		add r6,r2
+ 2302 0a38 731C      		adc r7,r3
+ 2303               	.LVL286:
+ 2304               	.L83:
+ 480:ili9341.c     ****     if (steep) {
+ 2305               		.loc 1 480 0
+ 2306 0a3a 8B81      		ldd r24,Y+3
+ 2307 0a3c 9C81      		ldd r25,Y+4
+ 2308 0a3e 0196      		adiw r24,1
+ 2309 0a40 9C83      		std Y+4,r25
+ 2310 0a42 8B83      		std Y+3,r24
+ 2311               	.LVL287:
+ 2312 0a44 00C0      		rjmp .L84
+ 2313               	.LVL288:
+ 2314               	.L79:
+ 475:ili9341.c     ****   } else {
+ 2315               		.loc 1 475 0
+ 2316 0a46 21E0      		ldi r18,lo8(1)
+ 2317 0a48 30E0      		ldi r19,0
+ 2318 0a4a 3A83      		std Y+2,r19
+ 2319 0a4c 2983      		std Y+1,r18
+ 2320 0a4e 00C0      		rjmp .L84
+ 2321               		.cfi_endproc
+ 2322               	.LFE28:
+ 2324               	.global	ili9341_drawFastVLine
+ 2326               	ili9341_drawFastVLine:
+ 2327               	.LFB26:
+ 441:ili9341.c     ****   // Update in subclasses if desired!
+ 2328               		.loc 1 441 0
+ 2329               		.cfi_startproc
+ 2330               	.LVL289:
+ 2331 0a50 0F93      		push r16
+ 2332               	.LCFI93:
+ 2333               		.cfi_def_cfa_offset 3
+ 2334               		.cfi_offset 16, -2
+ 2335 0a52 1F93      		push r17
+ 2336               	.LCFI94:
+ 2337               		.cfi_def_cfa_offset 4
+ 2338               		.cfi_offset 17, -3
+ 2339               	/* prologue: function */
+ 2340               	/* frame size = 0 */
+ 2341               	/* stack size = 2 */
+ 2342               	.L__stack_usage = 2
+ 443:ili9341.c     **** }
+ 2343               		.loc 1 443 0
+ 2344 0a54 460F      		add r20,r22
+ 2345 0a56 571F      		adc r21,r23
+ 2346               	.LVL290:
+ 2347 0a58 4150      		subi r20,1
+ 2348 0a5a 5109      		sbc r21,__zero_reg__
+ 2349 0a5c 8901      		movw r16,r18
+ 2350 0a5e 9A01      		movw r18,r20
+ 2351               	.LVL291:
+ 2352 0a60 AC01      		movw r20,r24
+ 2353 0a62 0E94 0000 		call ili9341_drawLine
+ 2354               	.LVL292:
+ 2355               	/* epilogue start */
+ 444:ili9341.c     **** 
+ 2356               		.loc 1 444 0
+ 2357 0a66 1F91      		pop r17
+ 2358 0a68 0F91      		pop r16
+ 2359               	.LVL293:
+ 2360 0a6a 0895      		ret
+ 2361               		.cfi_endproc
+ 2362               	.LFE26:
+ 2364               	.global	ili9341_fillCircleHelper
+ 2366               	ili9341_fillCircleHelper:
+ 2367               	.LFB25:
+ 410:ili9341.c     **** 
+ 2368               		.loc 1 410 0
+ 2369               		.cfi_startproc
+ 2370               	.LVL294:
+ 2371 0a6c 2F92      		push r2
+ 2372               	.LCFI95:
+ 2373               		.cfi_def_cfa_offset 3
+ 2374               		.cfi_offset 2, -2
+ 2375 0a6e 3F92      		push r3
+ 2376               	.LCFI96:
+ 2377               		.cfi_def_cfa_offset 4
+ 2378               		.cfi_offset 3, -3
+ 2379 0a70 4F92      		push r4
+ 2380               	.LCFI97:
+ 2381               		.cfi_def_cfa_offset 5
+ 2382               		.cfi_offset 4, -4
+ 2383 0a72 5F92      		push r5
+ 2384               	.LCFI98:
+ 2385               		.cfi_def_cfa_offset 6
+ 2386               		.cfi_offset 5, -5
+ 2387 0a74 6F92      		push r6
+ 2388               	.LCFI99:
+ 2389               		.cfi_def_cfa_offset 7
+ 2390               		.cfi_offset 6, -6
+ 2391 0a76 7F92      		push r7
+ 2392               	.LCFI100:
+ 2393               		.cfi_def_cfa_offset 8
+ 2394               		.cfi_offset 7, -7
+ 2395 0a78 8F92      		push r8
+ 2396               	.LCFI101:
+ 2397               		.cfi_def_cfa_offset 9
+ 2398               		.cfi_offset 8, -8
+ 2399 0a7a 9F92      		push r9
+ 2400               	.LCFI102:
+ 2401               		.cfi_def_cfa_offset 10
+ 2402               		.cfi_offset 9, -9
+ 2403 0a7c AF92      		push r10
+ 2404               	.LCFI103:
+ 2405               		.cfi_def_cfa_offset 11
+ 2406               		.cfi_offset 10, -10
+ 2407 0a7e BF92      		push r11
+ 2408               	.LCFI104:
+ 2409               		.cfi_def_cfa_offset 12
+ 2410               		.cfi_offset 11, -11
+ 2411 0a80 CF92      		push r12
+ 2412               	.LCFI105:
+ 2413               		.cfi_def_cfa_offset 13
+ 2414               		.cfi_offset 12, -12
+ 2415 0a82 DF92      		push r13
+ 2416               	.LCFI106:
+ 2417               		.cfi_def_cfa_offset 14
+ 2418               		.cfi_offset 13, -13
+ 2419 0a84 EF92      		push r14
+ 2420               	.LCFI107:
+ 2421               		.cfi_def_cfa_offset 15
+ 2422               		.cfi_offset 14, -14
+ 2423 0a86 FF92      		push r15
+ 2424               	.LCFI108:
+ 2425               		.cfi_def_cfa_offset 16
+ 2426               		.cfi_offset 15, -15
+ 2427 0a88 0F93      		push r16
+ 2428               	.LCFI109:
+ 2429               		.cfi_def_cfa_offset 17
+ 2430               		.cfi_offset 16, -16
+ 2431 0a8a 1F93      		push r17
+ 2432               	.LCFI110:
+ 2433               		.cfi_def_cfa_offset 18
+ 2434               		.cfi_offset 17, -17
+ 2435 0a8c CF93      		push r28
+ 2436               	.LCFI111:
+ 2437               		.cfi_def_cfa_offset 19
+ 2438               		.cfi_offset 28, -18
+ 2439 0a8e DF93      		push r29
+ 2440               	.LCFI112:
+ 2441               		.cfi_def_cfa_offset 20
+ 2442               		.cfi_offset 29, -19
+ 2443 0a90 00D0      		rcall .
+ 2444 0a92 00D0      		rcall .
+ 2445               	.LCFI113:
+ 2446               		.cfi_def_cfa_offset 24
+ 2447 0a94 CDB7      		in r28,__SP_L__
+ 2448 0a96 DEB7      		in r29,__SP_H__
+ 2449               	.LCFI114:
+ 2450               		.cfi_def_cfa_register 28
+ 2451               	/* prologue: function */
+ 2452               	/* frame size = 4 */
+ 2453               	/* stack size = 22 */
+ 2454               	.L__stack_usage = 22
+ 2455 0a98 5C01      		movw r10,r24
+ 2456 0a9a 4B01      		movw r8,r22
+ 2457 0a9c 5C83      		std Y+4,r21
+ 2458 0a9e 4B83      		std Y+3,r20
+ 412:ili9341.c     ****   int16_t ddF_x = 1;
+ 2459               		.loc 1 412 0
+ 2460 0aa0 81E0      		ldi r24,lo8(1)
+ 2461 0aa2 90E0      		ldi r25,0
+ 2462               	.LVL295:
+ 2463 0aa4 2C01      		movw r4,r24
+ 2464 0aa6 441A      		sub r4,r20
+ 2465 0aa8 550A      		sbc r5,r21
+ 2466               	.LVL296:
+ 414:ili9341.c     ****   int16_t x     = 0;
+ 2467               		.loc 1 414 0
+ 2468 0aaa 1A01      		movw r2,r20
+ 2469 0aac 3194      		neg r3
+ 2470 0aae 2194      		neg r2
+ 2471 0ab0 3108      		sbc r3,__zero_reg__
+ 2472 0ab2 220C      		lsl r2
+ 2473 0ab4 331C      		rol r3
+ 2474               	.LVL297:
+ 415:ili9341.c     ****   int16_t y     = r;
+ 2475               		.loc 1 415 0
+ 2476 0ab6 D12C      		mov r13,__zero_reg__
+ 2477 0ab8 C12C      		mov r12,__zero_reg__
+ 413:ili9341.c     ****   int16_t ddF_y = -2 * r;
+ 2478               		.loc 1 413 0
+ 2479 0aba 6624      		clr r6
+ 2480 0abc 6394      		inc r6
+ 2481 0abe 712C      		mov r7,__zero_reg__
+ 2482               	.LVL298:
+ 428:ili9341.c     ****       ili9341_drawFastVLine(x0+x, y0-y, 2*y+1+delta, color);
+ 2483               		.loc 1 428 0
+ 2484 0ac0 422F      		mov r20,r18
+ 2485 0ac2 4170      		andi r20,lo8(1)
+ 2486 0ac4 4983      		std Y+1,r20
+ 432:ili9341.c     ****       ili9341_drawFastVLine(x0-x, y0-y, 2*y+1+delta, color);
+ 2487               		.loc 1 432 0
+ 2488 0ac6 2270      		andi r18,lo8(2)
+ 2489               	.LVL299:
+ 2490 0ac8 2A83      		std Y+2,r18
+ 2491               	.LVL300:
+ 2492               	.L89:
+ 418:ili9341.c     ****     if (f >= 0) {
+ 2493               		.loc 1 418 0
+ 2494 0aca 4B81      		ldd r20,Y+3
+ 2495 0acc 5C81      		ldd r21,Y+4
+ 2496 0ace C416      		cp r12,r20
+ 2497 0ad0 D506      		cpc r13,r21
+ 2498 0ad2 04F0      		brlt .L93
+ 2499               	/* epilogue start */
+ 437:ili9341.c     **** 
+ 2500               		.loc 1 437 0
+ 2501 0ad4 0F90      		pop __tmp_reg__
+ 2502 0ad6 0F90      		pop __tmp_reg__
+ 2503 0ad8 0F90      		pop __tmp_reg__
+ 2504 0ada 0F90      		pop __tmp_reg__
+ 2505 0adc DF91      		pop r29
+ 2506 0ade CF91      		pop r28
+ 2507               	.LVL301:
+ 2508 0ae0 1F91      		pop r17
+ 2509 0ae2 0F91      		pop r16
+ 2510               	.LVL302:
+ 2511 0ae4 FF90      		pop r15
+ 2512 0ae6 EF90      		pop r14
+ 2513               	.LVL303:
+ 2514 0ae8 DF90      		pop r13
+ 2515 0aea CF90      		pop r12
+ 2516               	.LVL304:
+ 2517 0aec BF90      		pop r11
+ 2518 0aee AF90      		pop r10
+ 2519               	.LVL305:
+ 2520 0af0 9F90      		pop r9
+ 2521 0af2 8F90      		pop r8
+ 2522               	.LVL306:
+ 2523 0af4 7F90      		pop r7
+ 2524 0af6 6F90      		pop r6
+ 2525               	.LVL307:
+ 2526 0af8 5F90      		pop r5
+ 2527 0afa 4F90      		pop r4
+ 2528               	.LVL308:
+ 2529 0afc 3F90      		pop r3
+ 2530 0afe 2F90      		pop r2
+ 2531               	.LVL309:
+ 2532 0b00 0895      		ret
+ 2533               	.LVL310:
+ 2534               	.L93:
+ 419:ili9341.c     ****       y--;
+ 2535               		.loc 1 419 0
+ 2536 0b02 57FC      		sbrc r5,7
+ 2537 0b04 00C0      		rjmp .L90
+ 420:ili9341.c     ****       ddF_y += 2;
+ 2538               		.loc 1 420 0
+ 2539 0b06 8B81      		ldd r24,Y+3
+ 2540 0b08 9C81      		ldd r25,Y+4
+ 2541 0b0a 0197      		sbiw r24,1
+ 2542 0b0c 9C83      		std Y+4,r25
+ 2543 0b0e 8B83      		std Y+3,r24
+ 2544               	.LVL311:
+ 421:ili9341.c     ****       f     += ddF_y;
+ 2545               		.loc 1 421 0
+ 2546 0b10 92E0      		ldi r25,2
+ 2547 0b12 290E      		add r2,r25
+ 2548 0b14 311C      		adc r3,__zero_reg__
+ 2549               	.LVL312:
+ 422:ili9341.c     ****     }
+ 2550               		.loc 1 422 0
+ 2551 0b16 420C      		add r4,r2
+ 2552 0b18 531C      		adc r5,r3
+ 2553               	.LVL313:
+ 2554               	.L90:
+ 424:ili9341.c     ****     ddF_x += 2;
+ 2555               		.loc 1 424 0
+ 2556 0b1a EFEF      		ldi r30,-1
+ 2557 0b1c CE1A      		sub r12,r30
+ 2558 0b1e DE0A      		sbc r13,r30
+ 2559               	.LVL314:
+ 425:ili9341.c     ****     f     += ddF_x;
+ 2560               		.loc 1 425 0
+ 2561 0b20 F2E0      		ldi r31,2
+ 2562 0b22 6F0E      		add r6,r31
+ 2563 0b24 711C      		adc r7,__zero_reg__
+ 2564               	.LVL315:
+ 426:ili9341.c     **** 
+ 2565               		.loc 1 426 0
+ 2566 0b26 460C      		add r4,r6
+ 2567 0b28 571C      		adc r5,r7
+ 2568               	.LVL316:
+ 428:ili9341.c     ****       ili9341_drawFastVLine(x0+x, y0-y, 2*y+1+delta, color);
+ 2569               		.loc 1 428 0
+ 2570 0b2a 4981      		ldd r20,Y+1
+ 2571 0b2c 4423      		tst r20
+ 2572 0b2e 01F0      		breq .L91
+ 429:ili9341.c     ****       ili9341_drawFastVLine(x0+y, y0-x, 2*x+1+delta, color);
+ 2573               		.loc 1 429 0
+ 2574 0b30 4B81      		ldd r20,Y+3
+ 2575 0b32 5C81      		ldd r21,Y+4
+ 2576 0b34 440F      		lsl r20
+ 2577 0b36 551F      		rol r21
+ 2578 0b38 4F5F      		subi r20,-1
+ 2579 0b3a 5F4F      		sbci r21,-1
+ 2580 0b3c 400F      		add r20,r16
+ 2581 0b3e 511F      		adc r21,r17
+ 2582 0b40 9701      		movw r18,r14
+ 2583 0b42 B401      		movw r22,r8
+ 2584 0b44 8B81      		ldd r24,Y+3
+ 2585 0b46 9C81      		ldd r25,Y+4
+ 2586 0b48 681B      		sub r22,r24
+ 2587 0b4a 790B      		sbc r23,r25
+ 2588 0b4c C501      		movw r24,r10
+ 2589 0b4e 8C0D      		add r24,r12
+ 2590 0b50 9D1D      		adc r25,r13
+ 2591 0b52 0E94 0000 		call ili9341_drawFastVLine
+ 2592               	.LVL317:
+ 430:ili9341.c     ****     }
+ 2593               		.loc 1 430 0
+ 2594 0b56 9701      		movw r18,r14
+ 2595 0b58 A301      		movw r20,r6
+ 2596 0b5a 400F      		add r20,r16
+ 2597 0b5c 511F      		adc r21,r17
+ 2598 0b5e B401      		movw r22,r8
+ 2599 0b60 6C19      		sub r22,r12
+ 2600 0b62 7D09      		sbc r23,r13
+ 2601 0b64 8B81      		ldd r24,Y+3
+ 2602 0b66 9C81      		ldd r25,Y+4
+ 2603 0b68 8A0D      		add r24,r10
+ 2604 0b6a 9B1D      		adc r25,r11
+ 2605 0b6c 0E94 0000 		call ili9341_drawFastVLine
+ 2606               	.LVL318:
+ 2607               	.L91:
+ 432:ili9341.c     ****       ili9341_drawFastVLine(x0-x, y0-y, 2*y+1+delta, color);
+ 2608               		.loc 1 432 0
+ 2609 0b70 9A81      		ldd r25,Y+2
+ 2610 0b72 9923      		tst r25
+ 2611 0b74 01F4      		brne .+2
+ 2612 0b76 00C0      		rjmp .L89
+ 433:ili9341.c     ****       ili9341_drawFastVLine(x0-y, y0-x, 2*x+1+delta, color);
+ 2613               		.loc 1 433 0
+ 2614 0b78 4B81      		ldd r20,Y+3
+ 2615 0b7a 5C81      		ldd r21,Y+4
+ 2616 0b7c 440F      		lsl r20
+ 2617 0b7e 551F      		rol r21
+ 2618 0b80 4F5F      		subi r20,-1
+ 2619 0b82 5F4F      		sbci r21,-1
+ 2620 0b84 400F      		add r20,r16
+ 2621 0b86 511F      		adc r21,r17
+ 2622 0b88 9701      		movw r18,r14
+ 2623 0b8a B401      		movw r22,r8
+ 2624 0b8c EB81      		ldd r30,Y+3
+ 2625 0b8e FC81      		ldd r31,Y+4
+ 2626 0b90 6E1B      		sub r22,r30
+ 2627 0b92 7F0B      		sbc r23,r31
+ 2628 0b94 C501      		movw r24,r10
+ 2629 0b96 8C19      		sub r24,r12
+ 2630 0b98 9D09      		sbc r25,r13
+ 2631 0b9a 0E94 0000 		call ili9341_drawFastVLine
+ 2632               	.LVL319:
+ 434:ili9341.c     ****     }
+ 2633               		.loc 1 434 0
+ 2634 0b9e 9701      		movw r18,r14
+ 2635 0ba0 A301      		movw r20,r6
+ 2636 0ba2 400F      		add r20,r16
+ 2637 0ba4 511F      		adc r21,r17
+ 2638 0ba6 B401      		movw r22,r8
+ 2639 0ba8 6C19      		sub r22,r12
+ 2640 0baa 7D09      		sbc r23,r13
+ 2641 0bac C501      		movw r24,r10
+ 2642 0bae EB81      		ldd r30,Y+3
+ 2643 0bb0 FC81      		ldd r31,Y+4
+ 2644 0bb2 8E1B      		sub r24,r30
+ 2645 0bb4 9F0B      		sbc r25,r31
+ 2646 0bb6 0E94 0000 		call ili9341_drawFastVLine
+ 2647               	.LVL320:
+ 2648 0bba 00C0      		rjmp .L89
+ 2649               		.cfi_endproc
+ 2650               	.LFE25:
+ 2652               	.global	ili9341_fillCircle
+ 2654               	ili9341_fillCircle:
+ 2655               	.LFB24:
+ 403:ili9341.c     ****   ili9341_drawvline(x0, y0-r, 2*r+1, color);
+ 2656               		.loc 1 403 0
+ 2657               		.cfi_startproc
+ 2658               	.LVL321:
+ 2659 0bbc AF92      		push r10
+ 2660               	.LCFI115:
+ 2661               		.cfi_def_cfa_offset 3
+ 2662               		.cfi_offset 10, -2
+ 2663 0bbe BF92      		push r11
+ 2664               	.LCFI116:
+ 2665               		.cfi_def_cfa_offset 4
+ 2666               		.cfi_offset 11, -3
+ 2667 0bc0 CF92      		push r12
+ 2668               	.LCFI117:
+ 2669               		.cfi_def_cfa_offset 5
+ 2670               		.cfi_offset 12, -4
+ 2671 0bc2 DF92      		push r13
+ 2672               	.LCFI118:
+ 2673               		.cfi_def_cfa_offset 6
+ 2674               		.cfi_offset 13, -5
+ 2675 0bc4 EF92      		push r14
+ 2676               	.LCFI119:
+ 2677               		.cfi_def_cfa_offset 7
+ 2678               		.cfi_offset 14, -6
+ 2679 0bc6 FF92      		push r15
+ 2680               	.LCFI120:
+ 2681               		.cfi_def_cfa_offset 8
+ 2682               		.cfi_offset 15, -7
+ 2683 0bc8 0F93      		push r16
+ 2684               	.LCFI121:
+ 2685               		.cfi_def_cfa_offset 9
+ 2686               		.cfi_offset 16, -8
+ 2687 0bca 1F93      		push r17
+ 2688               	.LCFI122:
+ 2689               		.cfi_def_cfa_offset 10
+ 2690               		.cfi_offset 17, -9
+ 2691 0bcc CF93      		push r28
+ 2692               	.LCFI123:
+ 2693               		.cfi_def_cfa_offset 11
+ 2694               		.cfi_offset 28, -10
+ 2695 0bce DF93      		push r29
+ 2696               	.LCFI124:
+ 2697               		.cfi_def_cfa_offset 12
+ 2698               		.cfi_offset 29, -11
+ 2699               	/* prologue: function */
+ 2700               	/* frame size = 0 */
+ 2701               	/* stack size = 10 */
+ 2702               	.L__stack_usage = 10
+ 2703 0bd0 6C01      		movw r12,r24
+ 2704 0bd2 5B01      		movw r10,r22
+ 2705 0bd4 EA01      		movw r28,r20
+ 2706 0bd6 7901      		movw r14,r18
+ 404:ili9341.c     ****   ili9341_fillCircleHelper(x0, y0, r, 3, 0, color);
+ 2707               		.loc 1 404 0
+ 2708 0bd8 440F      		lsl r20
+ 2709 0bda 551F      		rol r21
+ 2710               	.LVL322:
+ 2711 0bdc 4F5F      		subi r20,-1
+ 2712 0bde 5F4F      		sbci r21,-1
+ 2713 0be0 6C1B      		sub r22,r28
+ 2714 0be2 7D0B      		sbc r23,r29
+ 2715               	.LVL323:
+ 2716 0be4 C601      		movw r24,r12
+ 2717 0be6 0E94 0000 		call ili9341_drawvline
+ 2718               	.LVL324:
+ 405:ili9341.c     **** }
+ 2719               		.loc 1 405 0
+ 2720 0bea 10E0      		ldi r17,0
+ 2721 0bec 00E0      		ldi r16,0
+ 2722 0bee 23E0      		ldi r18,lo8(3)
+ 2723 0bf0 AE01      		movw r20,r28
+ 2724 0bf2 B501      		movw r22,r10
+ 2725 0bf4 C601      		movw r24,r12
+ 2726 0bf6 0E94 0000 		call ili9341_fillCircleHelper
+ 2727               	.LVL325:
+ 2728               	/* epilogue start */
+ 406:ili9341.c     **** 
+ 2729               		.loc 1 406 0
+ 2730 0bfa DF91      		pop r29
+ 2731 0bfc CF91      		pop r28
+ 2732               	.LVL326:
+ 2733 0bfe 1F91      		pop r17
+ 2734 0c00 0F91      		pop r16
+ 2735 0c02 FF90      		pop r15
+ 2736 0c04 EF90      		pop r14
+ 2737               	.LVL327:
+ 2738 0c06 DF90      		pop r13
+ 2739 0c08 CF90      		pop r12
+ 2740               	.LVL328:
+ 2741 0c0a BF90      		pop r11
+ 2742 0c0c AF90      		pop r10
+ 2743               	.LVL329:
+ 2744 0c0e 0895      		ret
+ 2745               		.cfi_endproc
+ 2746               	.LFE24:
+ 2748               	.global	ili9341_drawFastHLine
+ 2750               	ili9341_drawFastHLine:
+ 2751               	.LFB27:
+ 447:ili9341.c     ****   // Update in subclasses if desired!
+ 2752               		.loc 1 447 0
+ 2753               		.cfi_startproc
+ 2754               	.LVL330:
+ 2755 0c10 0F93      		push r16
+ 2756               	.LCFI125:
+ 2757               		.cfi_def_cfa_offset 3
+ 2758               		.cfi_offset 16, -2
+ 2759 0c12 1F93      		push r17
+ 2760               	.LCFI126:
+ 2761               		.cfi_def_cfa_offset 4
+ 2762               		.cfi_offset 17, -3
+ 2763               	/* prologue: function */
+ 2764               	/* frame size = 0 */
+ 2765               	/* stack size = 2 */
+ 2766               	.L__stack_usage = 2
+ 449:ili9341.c     **** }
+ 2767               		.loc 1 449 0
+ 2768 0c14 480F      		add r20,r24
+ 2769 0c16 591F      		adc r21,r25
+ 2770               	.LVL331:
+ 2771 0c18 4150      		subi r20,1
+ 2772 0c1a 5109      		sbc r21,__zero_reg__
+ 2773 0c1c 8901      		movw r16,r18
+ 2774 0c1e 9B01      		movw r18,r22
+ 2775               	.LVL332:
+ 2776 0c20 0E94 0000 		call ili9341_drawLine
+ 2777               	.LVL333:
+ 2778               	/* epilogue start */
+ 450:ili9341.c     **** 
+ 2779               		.loc 1 450 0
+ 2780 0c24 1F91      		pop r17
+ 2781 0c26 0F91      		pop r16
+ 2782               	.LVL334:
+ 2783 0c28 0895      		ret
+ 2784               		.cfi_endproc
+ 2785               	.LFE27:
+ 2787               	.global	ili9341_drawRect
+ 2789               	ili9341_drawRect:
+ 2790               	.LFB29:
+ 493:ili9341.c     **** 
+ 494:ili9341.c     **** // Draw a rectangle
+ 495:ili9341.c     **** void ili9341_drawRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) 
+ 496:ili9341.c     **** {
+ 2791               		.loc 1 496 0
+ 2792               		.cfi_startproc
+ 2793               	.LVL335:
+ 2794 0c2a AF92      		push r10
+ 2795               	.LCFI127:
+ 2796               		.cfi_def_cfa_offset 3
+ 2797               		.cfi_offset 10, -2
+ 2798 0c2c BF92      		push r11
+ 2799               	.LCFI128:
+ 2800               		.cfi_def_cfa_offset 4
+ 2801               		.cfi_offset 11, -3
+ 2802 0c2e CF92      		push r12
+ 2803               	.LCFI129:
+ 2804               		.cfi_def_cfa_offset 5
+ 2805               		.cfi_offset 12, -4
+ 2806 0c30 DF92      		push r13
+ 2807               	.LCFI130:
+ 2808               		.cfi_def_cfa_offset 6
+ 2809               		.cfi_offset 13, -5
+ 2810 0c32 EF92      		push r14
+ 2811               	.LCFI131:
+ 2812               		.cfi_def_cfa_offset 7
+ 2813               		.cfi_offset 14, -6
+ 2814 0c34 FF92      		push r15
+ 2815               	.LCFI132:
+ 2816               		.cfi_def_cfa_offset 8
+ 2817               		.cfi_offset 15, -7
+ 2818 0c36 0F93      		push r16
+ 2819               	.LCFI133:
+ 2820               		.cfi_def_cfa_offset 9
+ 2821               		.cfi_offset 16, -8
+ 2822 0c38 1F93      		push r17
+ 2823               	.LCFI134:
+ 2824               		.cfi_def_cfa_offset 10
+ 2825               		.cfi_offset 17, -9
+ 2826 0c3a CF93      		push r28
+ 2827               	.LCFI135:
+ 2828               		.cfi_def_cfa_offset 11
+ 2829               		.cfi_offset 28, -10
+ 2830 0c3c DF93      		push r29
+ 2831               	.LCFI136:
+ 2832               		.cfi_def_cfa_offset 12
+ 2833               		.cfi_offset 29, -11
+ 2834               	/* prologue: function */
+ 2835               	/* frame size = 0 */
+ 2836               	/* stack size = 10 */
+ 2837               	.L__stack_usage = 10
+ 2838 0c3e EC01      		movw r28,r24
+ 2839 0c40 7B01      		movw r14,r22
+ 2840 0c42 5A01      		movw r10,r20
+ 2841 0c44 6901      		movw r12,r18
+ 497:ili9341.c     ****   ili9341_drawFastHLine(x, y, w, color);
+ 2842               		.loc 1 497 0
+ 2843 0c46 9801      		movw r18,r16
+ 2844               	.LVL336:
+ 2845 0c48 0E94 0000 		call ili9341_drawFastHLine
+ 2846               	.LVL337:
+ 498:ili9341.c     ****   ili9341_drawFastHLine(x, y+h-1, w, color);
+ 2847               		.loc 1 498 0
+ 2848 0c4c B701      		movw r22,r14
+ 2849 0c4e 6C0D      		add r22,r12
+ 2850 0c50 7D1D      		adc r23,r13
+ 2851 0c52 6150      		subi r22,1
+ 2852 0c54 7109      		sbc r23,__zero_reg__
+ 2853 0c56 9801      		movw r18,r16
+ 2854 0c58 A501      		movw r20,r10
+ 2855 0c5a CE01      		movw r24,r28
+ 2856 0c5c 0E94 0000 		call ili9341_drawFastHLine
+ 2857               	.LVL338:
+ 499:ili9341.c     ****   ili9341_drawFastVLine(x, y, h, color);
+ 2858               		.loc 1 499 0
+ 2859 0c60 9801      		movw r18,r16
+ 2860 0c62 A601      		movw r20,r12
+ 2861 0c64 B701      		movw r22,r14
+ 2862 0c66 CE01      		movw r24,r28
+ 2863 0c68 0E94 0000 		call ili9341_drawFastVLine
+ 2864               	.LVL339:
+ 500:ili9341.c     ****   ili9341_drawFastVLine(x+w-1, y, h, color);
+ 2865               		.loc 1 500 0
+ 2866 0c6c CE01      		movw r24,r28
+ 2867 0c6e 8A0D      		add r24,r10
+ 2868 0c70 9B1D      		adc r25,r11
+ 2869 0c72 9801      		movw r18,r16
+ 2870 0c74 A601      		movw r20,r12
+ 2871 0c76 B701      		movw r22,r14
+ 2872 0c78 0197      		sbiw r24,1
+ 2873               	/* epilogue start */
+ 501:ili9341.c     **** }
+ 2874               		.loc 1 501 0
+ 2875 0c7a DF91      		pop r29
+ 2876 0c7c CF91      		pop r28
+ 2877               	.LVL340:
+ 2878 0c7e 1F91      		pop r17
+ 2879 0c80 0F91      		pop r16
+ 2880               	.LVL341:
+ 2881 0c82 FF90      		pop r15
+ 2882 0c84 EF90      		pop r14
+ 2883               	.LVL342:
+ 2884 0c86 DF90      		pop r13
+ 2885 0c88 CF90      		pop r12
+ 2886               	.LVL343:
+ 2887 0c8a BF90      		pop r11
+ 2888 0c8c AF90      		pop r10
+ 2889               	.LVL344:
+ 500:ili9341.c     ****   ili9341_drawFastVLine(x+w-1, y, h, color);
+ 2890               		.loc 1 500 0
+ 2891 0c8e 0C94 0000 		jmp ili9341_drawFastVLine
+ 2892               	.LVL345:
+ 2893               		.cfi_endproc
+ 2894               	.LFE29:
+ 2896               	.global	ili9341_fillRect
+ 2898               	ili9341_fillRect:
+ 2899               	.LFB30:
+ 502:ili9341.c     **** 
+ 503:ili9341.c     **** 
+ 504:ili9341.c     **** void ili9341_fillRect(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) 
+ 505:ili9341.c     **** {
+ 2900               		.loc 1 505 0
+ 2901               		.cfi_startproc
+ 2902               	.LVL346:
+ 2903 0c92 AF92      		push r10
+ 2904               	.LCFI137:
+ 2905               		.cfi_def_cfa_offset 3
+ 2906               		.cfi_offset 10, -2
+ 2907 0c94 BF92      		push r11
+ 2908               	.LCFI138:
+ 2909               		.cfi_def_cfa_offset 4
+ 2910               		.cfi_offset 11, -3
+ 2911 0c96 CF92      		push r12
+ 2912               	.LCFI139:
+ 2913               		.cfi_def_cfa_offset 5
+ 2914               		.cfi_offset 12, -4
+ 2915 0c98 DF92      		push r13
+ 2916               	.LCFI140:
+ 2917               		.cfi_def_cfa_offset 6
+ 2918               		.cfi_offset 13, -5
+ 2919 0c9a EF92      		push r14
+ 2920               	.LCFI141:
+ 2921               		.cfi_def_cfa_offset 7
+ 2922               		.cfi_offset 14, -6
+ 2923 0c9c FF92      		push r15
+ 2924               	.LCFI142:
+ 2925               		.cfi_def_cfa_offset 8
+ 2926               		.cfi_offset 15, -7
+ 2927 0c9e 0F93      		push r16
+ 2928               	.LCFI143:
+ 2929               		.cfi_def_cfa_offset 9
+ 2930               		.cfi_offset 16, -8
+ 2931 0ca0 1F93      		push r17
+ 2932               	.LCFI144:
+ 2933               		.cfi_def_cfa_offset 10
+ 2934               		.cfi_offset 17, -9
+ 2935 0ca2 CF93      		push r28
+ 2936               	.LCFI145:
+ 2937               		.cfi_def_cfa_offset 11
+ 2938               		.cfi_offset 28, -10
+ 2939 0ca4 DF93      		push r29
+ 2940               	.LCFI146:
+ 2941               		.cfi_def_cfa_offset 12
+ 2942               		.cfi_offset 29, -11
+ 2943               	/* prologue: function */
+ 2944               	/* frame size = 0 */
+ 2945               	/* stack size = 10 */
+ 2946               	.L__stack_usage = 10
+ 2947 0ca6 6B01      		movw r12,r22
+ 2948 0ca8 5901      		movw r10,r18
+ 2949               	.LVL347:
+ 2950               	.LBB42:
+ 506:ili9341.c     ****   // Update in subclasses if desired!
+ 507:ili9341.c     ****   for (int16_t i=x; i<x+w; i++) {
+ 2951               		.loc 1 507 0
+ 2952 0caa EC01      		movw r28,r24
+ 2953 0cac 7C01      		movw r14,r24
+ 2954 0cae E40E      		add r14,r20
+ 2955 0cb0 F51E      		adc r15,r21
+ 2956               	.LVL348:
+ 2957               	.L104:
+ 2958               		.loc 1 507 0 is_stmt 0 discriminator 1
+ 2959 0cb2 CE15      		cp r28,r14
+ 2960 0cb4 DF05      		cpc r29,r15
+ 2961 0cb6 04F0      		brlt .L105
+ 2962               	/* epilogue start */
+ 2963               	.LBE42:
+ 508:ili9341.c     ****     ili9341_drawFastVLine(i, y, h, color);
+ 509:ili9341.c     ****   }
+ 510:ili9341.c     **** }
+ 2964               		.loc 1 510 0 is_stmt 1
+ 2965 0cb8 DF91      		pop r29
+ 2966 0cba CF91      		pop r28
+ 2967               	.LVL349:
+ 2968 0cbc 1F91      		pop r17
+ 2969 0cbe 0F91      		pop r16
+ 2970               	.LVL350:
+ 2971 0cc0 FF90      		pop r15
+ 2972 0cc2 EF90      		pop r14
+ 2973 0cc4 DF90      		pop r13
+ 2974 0cc6 CF90      		pop r12
+ 2975               	.LVL351:
+ 2976 0cc8 BF90      		pop r11
+ 2977 0cca AF90      		pop r10
+ 2978               	.LVL352:
+ 2979 0ccc 0895      		ret
+ 2980               	.LVL353:
+ 2981               	.L105:
+ 2982               	.LBB43:
+ 508:ili9341.c     ****     ili9341_drawFastVLine(i, y, h, color);
+ 2983               		.loc 1 508 0 discriminator 3
+ 2984 0cce 9801      		movw r18,r16
+ 2985 0cd0 A501      		movw r20,r10
+ 2986 0cd2 B601      		movw r22,r12
+ 2987 0cd4 CE01      		movw r24,r28
+ 2988 0cd6 0E94 0000 		call ili9341_drawFastVLine
+ 2989               	.LVL354:
+ 507:ili9341.c     ****     ili9341_drawFastVLine(i, y, h, color);
+ 2990               		.loc 1 507 0 discriminator 3
+ 2991 0cda 2196      		adiw r28,1
+ 2992               	.LVL355:
+ 2993 0cdc 00C0      		rjmp .L104
+ 2994               	.LBE43:
+ 2995               		.cfi_endproc
+ 2996               	.LFE30:
+ 2998               	.global	ili9341_drawRoundRect
+ 3000               	ili9341_drawRoundRect:
+ 3001               	.LFB31:
+ 511:ili9341.c     **** // Draw a rounded rectangle
+ 512:ili9341.c     **** void ili9341_drawRoundRect(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r, uint16_t color) 
+ 513:ili9341.c     **** {
+ 3002               		.loc 1 513 0
+ 3003               		.cfi_startproc
+ 3004               	.LVL356:
+ 3005 0cde 2F92      		push r2
+ 3006               	.LCFI147:
+ 3007               		.cfi_def_cfa_offset 3
+ 3008               		.cfi_offset 2, -2
+ 3009 0ce0 3F92      		push r3
+ 3010               	.LCFI148:
+ 3011               		.cfi_def_cfa_offset 4
+ 3012               		.cfi_offset 3, -3
+ 3013 0ce2 4F92      		push r4
+ 3014               	.LCFI149:
+ 3015               		.cfi_def_cfa_offset 5
+ 3016               		.cfi_offset 4, -4
+ 3017 0ce4 5F92      		push r5
+ 3018               	.LCFI150:
+ 3019               		.cfi_def_cfa_offset 6
+ 3020               		.cfi_offset 5, -5
+ 3021 0ce6 6F92      		push r6
+ 3022               	.LCFI151:
+ 3023               		.cfi_def_cfa_offset 7
+ 3024               		.cfi_offset 6, -6
+ 3025 0ce8 7F92      		push r7
+ 3026               	.LCFI152:
+ 3027               		.cfi_def_cfa_offset 8
+ 3028               		.cfi_offset 7, -7
+ 3029 0cea 8F92      		push r8
+ 3030               	.LCFI153:
+ 3031               		.cfi_def_cfa_offset 9
+ 3032               		.cfi_offset 8, -8
+ 3033 0cec 9F92      		push r9
+ 3034               	.LCFI154:
+ 3035               		.cfi_def_cfa_offset 10
+ 3036               		.cfi_offset 9, -9
+ 3037 0cee AF92      		push r10
+ 3038               	.LCFI155:
+ 3039               		.cfi_def_cfa_offset 11
+ 3040               		.cfi_offset 10, -10
+ 3041 0cf0 BF92      		push r11
+ 3042               	.LCFI156:
+ 3043               		.cfi_def_cfa_offset 12
+ 3044               		.cfi_offset 11, -11
+ 3045 0cf2 CF92      		push r12
+ 3046               	.LCFI157:
+ 3047               		.cfi_def_cfa_offset 13
+ 3048               		.cfi_offset 12, -12
+ 3049 0cf4 DF92      		push r13
+ 3050               	.LCFI158:
+ 3051               		.cfi_def_cfa_offset 14
+ 3052               		.cfi_offset 13, -13
+ 3053 0cf6 EF92      		push r14
+ 3054               	.LCFI159:
+ 3055               		.cfi_def_cfa_offset 15
+ 3056               		.cfi_offset 14, -14
+ 3057 0cf8 FF92      		push r15
+ 3058               	.LCFI160:
+ 3059               		.cfi_def_cfa_offset 16
+ 3060               		.cfi_offset 15, -15
+ 3061 0cfa 0F93      		push r16
+ 3062               	.LCFI161:
+ 3063               		.cfi_def_cfa_offset 17
+ 3064               		.cfi_offset 16, -16
+ 3065 0cfc 1F93      		push r17
+ 3066               	.LCFI162:
+ 3067               		.cfi_def_cfa_offset 18
+ 3068               		.cfi_offset 17, -17
+ 3069 0cfe CF93      		push r28
+ 3070               	.LCFI163:
+ 3071               		.cfi_def_cfa_offset 19
+ 3072               		.cfi_offset 28, -18
+ 3073 0d00 DF93      		push r29
+ 3074               	.LCFI164:
+ 3075               		.cfi_def_cfa_offset 20
+ 3076               		.cfi_offset 29, -19
+ 3077 0d02 00D0      		rcall .
+ 3078 0d04 00D0      		rcall .
+ 3079               	.LCFI165:
+ 3080               		.cfi_def_cfa_offset 24
+ 3081 0d06 CDB7      		in r28,__SP_L__
+ 3082 0d08 DEB7      		in r29,__SP_H__
+ 3083               	.LCFI166:
+ 3084               		.cfi_def_cfa_register 28
+ 3085               	/* prologue: function */
+ 3086               	/* frame size = 4 */
+ 3087               	/* stack size = 22 */
+ 3088               	.L__stack_usage = 22
+ 3089 0d0a 2C01      		movw r4,r24
+ 3090 0d0c 3B01      		movw r6,r22
+ 3091 0d0e 1A01      		movw r2,r20
+ 3092 0d10 6901      		movw r12,r18
+ 3093 0d12 1C83      		std Y+4,r17
+ 3094 0d14 0B83      		std Y+3,r16
+ 514:ili9341.c     ****   // smarter version
+ 515:ili9341.c     ****   ili9341_drawFastHLine(x+r  , y    , w-2*r, color); // Top
+ 3095               		.loc 1 515 0
+ 3096 0d16 000F      		lsl r16
+ 3097 0d18 111F      		rol r17
+ 3098               	.LVL357:
+ 3099 0d1a 4A01      		movw r8,r20
+ 3100 0d1c 801A      		sub r8,r16
+ 3101 0d1e 910A      		sbc r9,r17
+ 3102 0d20 AB80      		ldd r10,Y+3
+ 3103 0d22 BC80      		ldd r11,Y+4
+ 3104 0d24 A40C      		add r10,r4
+ 3105 0d26 B51C      		adc r11,r5
+ 3106 0d28 9701      		movw r18,r14
+ 3107               	.LVL358:
+ 3108 0d2a A401      		movw r20,r8
+ 3109               	.LVL359:
+ 3110 0d2c C501      		movw r24,r10
+ 3111 0d2e 0E94 0000 		call ili9341_drawFastHLine
+ 3112               	.LVL360:
+ 516:ili9341.c     ****   ili9341_drawFastHLine(x+r  , y+h-1, w-2*r, color); // Bottom
+ 3113               		.loc 1 516 0
+ 3114 0d32 C301      		movw r24,r6
+ 3115 0d34 8C0D      		add r24,r12
+ 3116 0d36 9D1D      		adc r25,r13
+ 3117 0d38 9A83      		std Y+2,r25
+ 3118 0d3a 8983      		std Y+1,r24
+ 3119 0d3c BC01      		movw r22,r24
+ 3120 0d3e 6150      		subi r22,1
+ 3121 0d40 7109      		sbc r23,__zero_reg__
+ 3122 0d42 9701      		movw r18,r14
+ 3123 0d44 A401      		movw r20,r8
+ 3124 0d46 C501      		movw r24,r10
+ 3125 0d48 0E94 0000 		call ili9341_drawFastHLine
+ 3126               	.LVL361:
+ 517:ili9341.c     ****   ili9341_drawFastVLine(x    , y+r  , h-2*r, color); // Left
+ 3127               		.loc 1 517 0
+ 3128 0d4c C01A      		sub r12,r16
+ 3129 0d4e D10A      		sbc r13,r17
+ 3130               	.LVL362:
+ 3131 0d50 8B81      		ldd r24,Y+3
+ 3132 0d52 9C81      		ldd r25,Y+4
+ 3133 0d54 680E      		add r6,r24
+ 3134 0d56 791E      		adc r7,r25
+ 3135               	.LVL363:
+ 3136 0d58 9701      		movw r18,r14
+ 3137 0d5a A601      		movw r20,r12
+ 3138 0d5c B301      		movw r22,r6
+ 3139 0d5e C201      		movw r24,r4
+ 3140 0d60 0E94 0000 		call ili9341_drawFastVLine
+ 3141               	.LVL364:
+ 518:ili9341.c     ****   ili9341_drawFastVLine(x+w-1, y+r  , h-2*r, color); // Right
+ 3142               		.loc 1 518 0
+ 3143 0d64 420C      		add r4,r2
+ 3144 0d66 531C      		adc r5,r3
+ 3145               	.LVL365:
+ 3146 0d68 9701      		movw r18,r14
+ 3147 0d6a A601      		movw r20,r12
+ 3148 0d6c B301      		movw r22,r6
+ 3149 0d6e C201      		movw r24,r4
+ 3150 0d70 0197      		sbiw r24,1
+ 3151 0d72 0E94 0000 		call ili9341_drawFastVLine
+ 3152               	.LVL366:
+ 519:ili9341.c     ****   // draw four corners
+ 520:ili9341.c     ****   ili9341_drawCircleHelper(x+r    , y+r    , r, 1, color);
+ 3153               		.loc 1 520 0
+ 3154 0d76 8701      		movw r16,r14
+ 3155 0d78 21E0      		ldi r18,lo8(1)
+ 3156 0d7a 4B81      		ldd r20,Y+3
+ 3157 0d7c 5C81      		ldd r21,Y+4
+ 3158 0d7e B301      		movw r22,r6
+ 3159 0d80 C501      		movw r24,r10
+ 3160 0d82 0E94 0000 		call ili9341_drawCircleHelper
+ 3161               	.LVL367:
+ 521:ili9341.c     ****   ili9341_drawCircleHelper(x+w-r-1, y+r    , r, 2, color);
+ 3162               		.loc 1 521 0
+ 3163 0d86 8B81      		ldd r24,Y+3
+ 3164 0d88 9C81      		ldd r25,Y+4
+ 3165 0d8a 481A      		sub r4,r24
+ 3166 0d8c 590A      		sbc r5,r25
+ 3167 0d8e 91E0      		ldi r25,1
+ 3168 0d90 491A      		sub r4,r25
+ 3169 0d92 5108      		sbc r5,__zero_reg__
+ 3170 0d94 22E0      		ldi r18,lo8(2)
+ 3171 0d96 4B81      		ldd r20,Y+3
+ 3172 0d98 5C81      		ldd r21,Y+4
+ 3173 0d9a B301      		movw r22,r6
+ 3174 0d9c C201      		movw r24,r4
+ 3175 0d9e 0E94 0000 		call ili9341_drawCircleHelper
+ 3176               	.LVL368:
+ 522:ili9341.c     ****   ili9341_drawCircleHelper(x+w-r-1, y+h-r-1, r, 4, color);
+ 3177               		.loc 1 522 0
+ 3178 0da2 C980      		ldd r12,Y+1
+ 3179 0da4 DA80      		ldd r13,Y+2
+ 3180 0da6 8B81      		ldd r24,Y+3
+ 3181 0da8 9C81      		ldd r25,Y+4
+ 3182 0daa C81A      		sub r12,r24
+ 3183 0dac D90A      		sbc r13,r25
+ 3184 0dae 91E0      		ldi r25,1
+ 3185 0db0 C91A      		sub r12,r25
+ 3186 0db2 D108      		sbc r13,__zero_reg__
+ 3187 0db4 24E0      		ldi r18,lo8(4)
+ 3188 0db6 4B81      		ldd r20,Y+3
+ 3189 0db8 5C81      		ldd r21,Y+4
+ 3190 0dba B601      		movw r22,r12
+ 3191 0dbc C201      		movw r24,r4
+ 3192 0dbe 0E94 0000 		call ili9341_drawCircleHelper
+ 3193               	.LVL369:
+ 523:ili9341.c     ****   ili9341_drawCircleHelper(x+r    , y+h-r-1, r, 8, color);
+ 3194               		.loc 1 523 0
+ 3195 0dc2 28E0      		ldi r18,lo8(8)
+ 3196 0dc4 4B81      		ldd r20,Y+3
+ 3197 0dc6 5C81      		ldd r21,Y+4
+ 3198 0dc8 B601      		movw r22,r12
+ 3199 0dca C501      		movw r24,r10
+ 3200 0dcc 0E94 0000 		call ili9341_drawCircleHelper
+ 3201               	.LVL370:
+ 3202               	/* epilogue start */
+ 524:ili9341.c     **** }
+ 3203               		.loc 1 524 0
+ 3204 0dd0 0F90      		pop __tmp_reg__
+ 3205 0dd2 0F90      		pop __tmp_reg__
+ 3206 0dd4 0F90      		pop __tmp_reg__
+ 3207 0dd6 0F90      		pop __tmp_reg__
+ 3208 0dd8 DF91      		pop r29
+ 3209 0dda CF91      		pop r28
+ 3210               	.LVL371:
+ 3211 0ddc 1F91      		pop r17
+ 3212               	.LVL372:
+ 3213 0dde 0F91      		pop r16
+ 3214               	.LVL373:
+ 3215 0de0 FF90      		pop r15
+ 3216               	.LVL374:
+ 3217 0de2 EF90      		pop r14
+ 3218               	.LVL375:
+ 3219 0de4 DF90      		pop r13
+ 3220               	.LVL376:
+ 3221 0de6 CF90      		pop r12
+ 3222               	.LVL377:
+ 3223 0de8 BF90      		pop r11
+ 3224               	.LVL378:
+ 3225 0dea AF90      		pop r10
+ 3226               	.LVL379:
+ 3227 0dec 9F90      		pop r9
+ 3228               	.LVL380:
+ 3229 0dee 8F90      		pop r8
+ 3230               	.LVL381:
+ 3231 0df0 7F90      		pop r7
+ 3232               	.LVL382:
+ 3233 0df2 6F90      		pop r6
+ 3234               	.LVL383:
+ 3235 0df4 5F90      		pop r5
+ 3236               	.LVL384:
+ 3237 0df6 4F90      		pop r4
+ 3238               	.LVL385:
+ 3239 0df8 3F90      		pop r3
+ 3240               	.LVL386:
+ 3241 0dfa 2F90      		pop r2
+ 3242               	.LVL387:
+ 3243 0dfc 0895      		ret
+ 3244               		.cfi_endproc
+ 3245               	.LFE31:
+ 3247               	.global	ili9341_fillRoundRect
+ 3249               	ili9341_fillRoundRect:
+ 3250               	.LFB32:
+ 525:ili9341.c     **** 
+ 526:ili9341.c     **** // Fill a rounded rectangle
+ 527:ili9341.c     **** void ili9341_fillRoundRect(int16_t x, int16_t y, int16_t w, int16_t h, int16_t r, uint16_t color) 
+ 528:ili9341.c     **** {
+ 3251               		.loc 1 528 0
+ 3252               		.cfi_startproc
+ 3253               	.LVL388:
+ 3254 0dfe 2F92      		push r2
+ 3255               	.LCFI167:
+ 3256               		.cfi_def_cfa_offset 3
+ 3257               		.cfi_offset 2, -2
+ 3258 0e00 3F92      		push r3
+ 3259               	.LCFI168:
+ 3260               		.cfi_def_cfa_offset 4
+ 3261               		.cfi_offset 3, -3
+ 3262 0e02 4F92      		push r4
+ 3263               	.LCFI169:
+ 3264               		.cfi_def_cfa_offset 5
+ 3265               		.cfi_offset 4, -4
+ 3266 0e04 5F92      		push r5
+ 3267               	.LCFI170:
+ 3268               		.cfi_def_cfa_offset 6
+ 3269               		.cfi_offset 5, -5
+ 3270 0e06 6F92      		push r6
+ 3271               	.LCFI171:
+ 3272               		.cfi_def_cfa_offset 7
+ 3273               		.cfi_offset 6, -6
+ 3274 0e08 7F92      		push r7
+ 3275               	.LCFI172:
+ 3276               		.cfi_def_cfa_offset 8
+ 3277               		.cfi_offset 7, -7
+ 3278 0e0a 8F92      		push r8
+ 3279               	.LCFI173:
+ 3280               		.cfi_def_cfa_offset 9
+ 3281               		.cfi_offset 8, -8
+ 3282 0e0c 9F92      		push r9
+ 3283               	.LCFI174:
+ 3284               		.cfi_def_cfa_offset 10
+ 3285               		.cfi_offset 9, -9
+ 3286 0e0e AF92      		push r10
+ 3287               	.LCFI175:
+ 3288               		.cfi_def_cfa_offset 11
+ 3289               		.cfi_offset 10, -10
+ 3290 0e10 BF92      		push r11
+ 3291               	.LCFI176:
+ 3292               		.cfi_def_cfa_offset 12
+ 3293               		.cfi_offset 11, -11
+ 3294 0e12 CF92      		push r12
+ 3295               	.LCFI177:
+ 3296               		.cfi_def_cfa_offset 13
+ 3297               		.cfi_offset 12, -12
+ 3298 0e14 DF92      		push r13
+ 3299               	.LCFI178:
+ 3300               		.cfi_def_cfa_offset 14
+ 3301               		.cfi_offset 13, -13
+ 3302 0e16 EF92      		push r14
+ 3303               	.LCFI179:
+ 3304               		.cfi_def_cfa_offset 15
+ 3305               		.cfi_offset 14, -14
+ 3306 0e18 FF92      		push r15
+ 3307               	.LCFI180:
+ 3308               		.cfi_def_cfa_offset 16
+ 3309               		.cfi_offset 15, -15
+ 3310 0e1a 0F93      		push r16
+ 3311               	.LCFI181:
+ 3312               		.cfi_def_cfa_offset 17
+ 3313               		.cfi_offset 16, -16
+ 3314 0e1c 1F93      		push r17
+ 3315               	.LCFI182:
+ 3316               		.cfi_def_cfa_offset 18
+ 3317               		.cfi_offset 17, -17
+ 3318 0e1e CF93      		push r28
+ 3319               	.LCFI183:
+ 3320               		.cfi_def_cfa_offset 19
+ 3321               		.cfi_offset 28, -18
+ 3322 0e20 DF93      		push r29
+ 3323               	.LCFI184:
+ 3324               		.cfi_def_cfa_offset 20
+ 3325               		.cfi_offset 29, -19
+ 3326               	/* prologue: function */
+ 3327               	/* frame size = 0 */
+ 3328               	/* stack size = 18 */
+ 3329               	.L__stack_usage = 18
+ 3330 0e22 1C01      		movw r2,r24
+ 3331 0e24 5B01      		movw r10,r22
+ 3332 0e26 2A01      		movw r4,r20
+ 3333 0e28 E901      		movw r28,r18
+ 3334 0e2a 6801      		movw r12,r16
+ 3335 0e2c 4701      		movw r8,r14
+ 529:ili9341.c     ****   // smarter version
+ 530:ili9341.c     ****   ili9341_fillRect(x+r, y, w-2*r, h, color);
+ 3336               		.loc 1 530 0
+ 3337 0e2e 7801      		movw r14,r16
+ 3338               	.LVL389:
+ 3339 0e30 EE0C      		lsl r14
+ 3340 0e32 FF1C      		rol r15
+ 3341               	.LVL390:
+ 3342 0e34 3801      		movw r6,r16
+ 3343 0e36 620C      		add r6,r2
+ 3344 0e38 731C      		adc r7,r3
+ 3345 0e3a 4E19      		sub r20,r14
+ 3346 0e3c 5F09      		sbc r21,r15
+ 3347               	.LVL391:
+ 3348 0e3e 8401      		movw r16,r8
+ 3349               	.LVL392:
+ 3350 0e40 C301      		movw r24,r6
+ 3351 0e42 0E94 0000 		call ili9341_fillRect
+ 3352               	.LVL393:
+ 531:ili9341.c     **** 
+ 532:ili9341.c     ****   // draw four corners
+ 533:ili9341.c     ****   ili9341_fillCircleHelper(x+w-r-1, y+r, r, 1, h-2*r-1, color);
+ 3353               		.loc 1 533 0
+ 3354 0e46 CE19      		sub r28,r14
+ 3355 0e48 DF09      		sbc r29,r15
+ 3356               	.LVL394:
+ 3357 0e4a 2197      		sbiw r28,1
+ 3358 0e4c AC0C      		add r10,r12
+ 3359 0e4e BD1C      		adc r11,r13
+ 3360               	.LVL395:
+ 3361 0e50 420C      		add r4,r2
+ 3362 0e52 531C      		adc r5,r3
+ 3363               	.LVL396:
+ 3364 0e54 C201      		movw r24,r4
+ 3365 0e56 8C19      		sub r24,r12
+ 3366 0e58 9D09      		sbc r25,r13
+ 3367 0e5a 7401      		movw r14,r8
+ 3368 0e5c 8E01      		movw r16,r28
+ 3369 0e5e 21E0      		ldi r18,lo8(1)
+ 3370 0e60 A601      		movw r20,r12
+ 3371 0e62 B501      		movw r22,r10
+ 3372 0e64 0197      		sbiw r24,1
+ 3373 0e66 0E94 0000 		call ili9341_fillCircleHelper
+ 3374               	.LVL397:
+ 534:ili9341.c     ****   ili9341_fillCircleHelper(x+r    , y+r, r, 2, h-2*r-1, color);
+ 3375               		.loc 1 534 0
+ 3376 0e6a 22E0      		ldi r18,lo8(2)
+ 3377 0e6c A601      		movw r20,r12
+ 3378 0e6e B501      		movw r22,r10
+ 3379 0e70 C301      		movw r24,r6
+ 3380 0e72 0E94 0000 		call ili9341_fillCircleHelper
+ 3381               	.LVL398:
+ 3382               	/* epilogue start */
+ 535:ili9341.c     **** }
+ 3383               		.loc 1 535 0
+ 3384 0e76 DF91      		pop r29
+ 3385 0e78 CF91      		pop r28
+ 3386 0e7a 1F91      		pop r17
+ 3387 0e7c 0F91      		pop r16
+ 3388 0e7e FF90      		pop r15
+ 3389 0e80 EF90      		pop r14
+ 3390 0e82 DF90      		pop r13
+ 3391 0e84 CF90      		pop r12
+ 3392               	.LVL399:
+ 3393 0e86 BF90      		pop r11
+ 3394 0e88 AF90      		pop r10
+ 3395 0e8a 9F90      		pop r9
+ 3396 0e8c 8F90      		pop r8
+ 3397               	.LVL400:
+ 3398 0e8e 7F90      		pop r7
+ 3399 0e90 6F90      		pop r6
+ 3400 0e92 5F90      		pop r5
+ 3401 0e94 4F90      		pop r4
+ 3402 0e96 3F90      		pop r3
+ 3403 0e98 2F90      		pop r2
+ 3404               	.LVL401:
+ 3405 0e9a 0895      		ret
+ 3406               		.cfi_endproc
+ 3407               	.LFE32:
+ 3409               	.global	ili9341_drawBitmap
+ 3411               	ili9341_drawBitmap:
+ 3412               	.LFB33:
+ 536:ili9341.c     **** 
+ 537:ili9341.c     **** // Draw a 1-bit image (bitmap) at the specified (x,y) position from the
+ 538:ili9341.c     **** // provided bitmap buffer (must be PROGMEM memory) using the specified
+ 539:ili9341.c     **** // foreground color (unset bits are transparent).
+ 540:ili9341.c     **** void ili9341_drawBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_t
+ 541:ili9341.c     **** {
+ 3413               		.loc 1 541 0
+ 3414               		.cfi_startproc
+ 3415               	.LVL402:
+ 3416 0e9c 2F92      		push r2
+ 3417               	.LCFI185:
+ 3418               		.cfi_def_cfa_offset 3
+ 3419               		.cfi_offset 2, -2
+ 3420 0e9e 3F92      		push r3
+ 3421               	.LCFI186:
+ 3422               		.cfi_def_cfa_offset 4
+ 3423               		.cfi_offset 3, -3
+ 3424 0ea0 4F92      		push r4
+ 3425               	.LCFI187:
+ 3426               		.cfi_def_cfa_offset 5
+ 3427               		.cfi_offset 4, -4
+ 3428 0ea2 5F92      		push r5
+ 3429               	.LCFI188:
+ 3430               		.cfi_def_cfa_offset 6
+ 3431               		.cfi_offset 5, -5
+ 3432 0ea4 6F92      		push r6
+ 3433               	.LCFI189:
+ 3434               		.cfi_def_cfa_offset 7
+ 3435               		.cfi_offset 6, -6
+ 3436 0ea6 7F92      		push r7
+ 3437               	.LCFI190:
+ 3438               		.cfi_def_cfa_offset 8
+ 3439               		.cfi_offset 7, -7
+ 3440 0ea8 8F92      		push r8
+ 3441               	.LCFI191:
+ 3442               		.cfi_def_cfa_offset 9
+ 3443               		.cfi_offset 8, -8
+ 3444 0eaa 9F92      		push r9
+ 3445               	.LCFI192:
+ 3446               		.cfi_def_cfa_offset 10
+ 3447               		.cfi_offset 9, -9
+ 3448 0eac AF92      		push r10
+ 3449               	.LCFI193:
+ 3450               		.cfi_def_cfa_offset 11
+ 3451               		.cfi_offset 10, -10
+ 3452 0eae BF92      		push r11
+ 3453               	.LCFI194:
+ 3454               		.cfi_def_cfa_offset 12
+ 3455               		.cfi_offset 11, -11
+ 3456 0eb0 CF92      		push r12
+ 3457               	.LCFI195:
+ 3458               		.cfi_def_cfa_offset 13
+ 3459               		.cfi_offset 12, -12
+ 3460 0eb2 DF92      		push r13
+ 3461               	.LCFI196:
+ 3462               		.cfi_def_cfa_offset 14
+ 3463               		.cfi_offset 13, -13
+ 3464 0eb4 EF92      		push r14
+ 3465               	.LCFI197:
+ 3466               		.cfi_def_cfa_offset 15
+ 3467               		.cfi_offset 14, -14
+ 3468 0eb6 FF92      		push r15
+ 3469               	.LCFI198:
+ 3470               		.cfi_def_cfa_offset 16
+ 3471               		.cfi_offset 15, -15
+ 3472 0eb8 0F93      		push r16
+ 3473               	.LCFI199:
+ 3474               		.cfi_def_cfa_offset 17
+ 3475               		.cfi_offset 16, -16
+ 3476 0eba 1F93      		push r17
+ 3477               	.LCFI200:
+ 3478               		.cfi_def_cfa_offset 18
+ 3479               		.cfi_offset 17, -17
+ 3480 0ebc CF93      		push r28
+ 3481               	.LCFI201:
+ 3482               		.cfi_def_cfa_offset 19
+ 3483               		.cfi_offset 28, -18
+ 3484 0ebe DF93      		push r29
+ 3485               	.LCFI202:
+ 3486               		.cfi_def_cfa_offset 20
+ 3487               		.cfi_offset 29, -19
+ 3488 0ec0 00D0      		rcall .
+ 3489 0ec2 00D0      		rcall .
+ 3490 0ec4 00D0      		rcall .
+ 3491 0ec6 1F92      		push __zero_reg__
+ 3492               	.LCFI203:
+ 3493               		.cfi_def_cfa_offset 27
+ 3494 0ec8 CDB7      		in r28,__SP_L__
+ 3495 0eca DEB7      		in r29,__SP_H__
+ 3496               	.LCFI204:
+ 3497               		.cfi_def_cfa_register 28
+ 3498               	/* prologue: function */
+ 3499               	/* frame size = 7 */
+ 3500               	/* stack size = 25 */
+ 3501               	.L__stack_usage = 25
+ 3502 0ecc 2C01      		movw r4,r24
+ 3503 0ece 3B01      		movw r6,r22
+ 3504 0ed0 4A01      		movw r8,r20
+ 3505 0ed2 5901      		movw r10,r18
+ 3506 0ed4 1801      		movw r2,r16
+ 3507               	.LVL403:
+ 542:ili9341.c     **** 
+ 543:ili9341.c     ****   int16_t i, j, byteWidth = (w + 7) / 8;
+ 3508               		.loc 1 543 0
+ 3509 0ed6 C901      		movw r24,r18
+ 3510               	.LVL404:
+ 3511 0ed8 0796      		adiw r24,7
+ 3512 0eda 97FD      		sbrc r25,7
+ 3513 0edc 0796      		adiw r24,7
+ 3514               	.L109:
+ 3515 0ede 9C01      		movw r18,r24
+ 3516               	.LVL405:
+ 3517 0ee0 93E0      		ldi r25,3
+ 3518               		1:
+ 3519 0ee2 3595      		asr r19
+ 3520 0ee4 2795      		ror r18
+ 3521 0ee6 9A95      		dec r25
+ 3522 0ee8 01F4      		brne 1b
+ 3523 0eea 3B83      		std Y+3,r19
+ 3524 0eec 2A83      		std Y+2,r18
+ 544:ili9341.c     ****   uint8_t byte;
+ 545:ili9341.c     **** 
+ 546:ili9341.c     ****   for(j=0; j<h; j++) {
+ 3525               		.loc 1 546 0
+ 3526 0eee D12C      		mov r13,__zero_reg__
+ 3527 0ef0 C12C      		mov r12,__zero_reg__
+ 3528 0ef2 10E0      		ldi r17,0
+ 3529 0ef4 00E0      		ldi r16,0
+ 3530               	.LVL406:
+ 3531               	.L110:
+ 3532               		.loc 1 546 0 is_stmt 0 discriminator 1
+ 3533 0ef6 0215      		cp r16,r2
+ 3534 0ef8 1305      		cpc r17,r3
+ 3535 0efa 04F4      		brge .+2
+ 3536 0efc 00C0      		rjmp .L116
+ 3537               	/* epilogue start */
+ 547:ili9341.c     ****     for(i=0; i<w; i++) {
+ 548:ili9341.c     ****       if(i & 7) byte <<= 1;
+ 549:ili9341.c     ****       else      byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
+ 550:ili9341.c     ****       if(byte & 0x80) ili9341_drawpixel(x+i, y+j, color);
+ 551:ili9341.c     ****     }
+ 552:ili9341.c     ****   }
+ 553:ili9341.c     **** }
+ 3538               		.loc 1 553 0 is_stmt 1
+ 3539 0efe 2796      		adiw r28,7
+ 3540               	.LVL407:
+ 3541 0f00 0FB6      		in __tmp_reg__,__SREG__
+ 3542 0f02 F894      		cli
+ 3543 0f04 DEBF      		out __SP_H__,r29
+ 3544 0f06 0FBE      		out __SREG__,__tmp_reg__
+ 3545 0f08 CDBF      		out __SP_L__,r28
+ 3546               	.LVL408:
+ 3547 0f0a DF91      		pop r29
+ 3548 0f0c CF91      		pop r28
+ 3549 0f0e 1F91      		pop r17
+ 3550 0f10 0F91      		pop r16
+ 3551               	.LVL409:
+ 3552 0f12 FF90      		pop r15
+ 3553 0f14 EF90      		pop r14
+ 3554               	.LVL410:
+ 3555 0f16 DF90      		pop r13
+ 3556 0f18 CF90      		pop r12
+ 3557 0f1a BF90      		pop r11
+ 3558 0f1c AF90      		pop r10
+ 3559               	.LVL411:
+ 3560 0f1e 9F90      		pop r9
+ 3561 0f20 8F90      		pop r8
+ 3562               	.LVL412:
+ 3563 0f22 7F90      		pop r7
+ 3564 0f24 6F90      		pop r6
+ 3565               	.LVL413:
+ 3566 0f26 5F90      		pop r5
+ 3567 0f28 4F90      		pop r4
+ 3568               	.LVL414:
+ 3569 0f2a 3F90      		pop r3
+ 3570 0f2c 2F90      		pop r2
+ 3571               	.LVL415:
+ 3572 0f2e 0895      		ret
+ 3573               	.LVL416:
+ 3574               	.L114:
+ 548:ili9341.c     ****       else      byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
+ 3575               		.loc 1 548 0
+ 3576 0f30 8E81      		ldd r24,Y+6
+ 3577 0f32 9F81      		ldd r25,Y+7
+ 3578 0f34 8770      		andi r24,7
+ 3579 0f36 9927      		clr r25
+ 3580 0f38 892B      		or r24,r25
+ 3581 0f3a 01F0      		breq .L111
+ 548:ili9341.c     ****       else      byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
+ 3582               		.loc 1 548 0 is_stmt 0 discriminator 1
+ 3583 0f3c 3981      		ldd r19,Y+1
+ 3584 0f3e 330F      		lsl r19
+ 3585 0f40 3983      		std Y+1,r19
+ 3586               	.LVL417:
+ 3587               	.L112:
+ 550:ili9341.c     ****     }
+ 3588               		.loc 1 550 0 is_stmt 1
+ 3589 0f42 9981      		ldd r25,Y+1
+ 3590 0f44 97FF      		sbrs r25,7
+ 3591 0f46 00C0      		rjmp .L113
+ 550:ili9341.c     ****     }
+ 3592               		.loc 1 550 0 is_stmt 0 discriminator 1
+ 3593 0f48 A701      		movw r20,r14
+ 3594 0f4a 6C81      		ldd r22,Y+4
+ 3595 0f4c 7D81      		ldd r23,Y+5
+ 3596 0f4e 8E81      		ldd r24,Y+6
+ 3597 0f50 9F81      		ldd r25,Y+7
+ 3598 0f52 840D      		add r24,r4
+ 3599 0f54 951D      		adc r25,r5
+ 3600 0f56 0E94 0000 		call ili9341_drawpixel
+ 3601               	.LVL418:
+ 3602               	.L113:
+ 547:ili9341.c     ****     for(i=0; i<w; i++) {
+ 3603               		.loc 1 547 0 is_stmt 1 discriminator 2
+ 3604 0f5a 2E81      		ldd r18,Y+6
+ 3605 0f5c 3F81      		ldd r19,Y+7
+ 3606 0f5e 2F5F      		subi r18,-1
+ 3607 0f60 3F4F      		sbci r19,-1
+ 3608 0f62 3F83      		std Y+7,r19
+ 3609 0f64 2E83      		std Y+6,r18
+ 3610               	.LVL419:
+ 3611               	.L115:
+ 547:ili9341.c     ****     for(i=0; i<w; i++) {
+ 3612               		.loc 1 547 0 is_stmt 0 discriminator 1
+ 3613 0f66 2E81      		ldd r18,Y+6
+ 3614 0f68 3F81      		ldd r19,Y+7
+ 3615 0f6a 2A15      		cp r18,r10
+ 3616 0f6c 3B05      		cpc r19,r11
+ 3617 0f6e 04F0      		brlt .L114
+ 546:ili9341.c     ****     for(i=0; i<w; i++) {
+ 3618               		.loc 1 546 0 is_stmt 1 discriminator 2
+ 3619 0f70 0F5F      		subi r16,-1
+ 3620 0f72 1F4F      		sbci r17,-1
+ 3621               	.LVL420:
+ 3622 0f74 8A81      		ldd r24,Y+2
+ 3623 0f76 9B81      		ldd r25,Y+3
+ 3624 0f78 C80E      		add r12,r24
+ 3625 0f7a D91E      		adc r13,r25
+ 3626 0f7c 00C0      		rjmp .L110
+ 3627               	.L111:
+ 3628               	.LVL421:
+ 3629               	.LBB44:
+ 549:ili9341.c     ****       if(byte & 0x80) ili9341_drawpixel(x+i, y+j, color);
+ 3630               		.loc 1 549 0
+ 3631 0f7e EE81      		ldd r30,Y+6
+ 3632 0f80 FF81      		ldd r31,Y+7
+ 3633 0f82 83E0      		ldi r24,3
+ 3634               		1:
+ 3635 0f84 F595      		asr r31
+ 3636 0f86 E795      		ror r30
+ 3637 0f88 8A95      		dec r24
+ 3638 0f8a 01F4      		brne 1b
+ 3639 0f8c EC0D      		add r30,r12
+ 3640 0f8e FD1D      		adc r31,r13
+ 3641 0f90 E80D      		add r30,r8
+ 3642 0f92 F91D      		adc r31,r9
+ 3643               	/* #APP */
+ 3644               	 ;  549 "ili9341.c" 1
+ 3645 0f94 8491      		lpm r24, Z
+ 3646               		
+ 3647               	 ;  0 "" 2
+ 3648               	/* #NOAPP */
+ 3649 0f96 8983      		std Y+1,r24
+ 3650               	.LVL422:
+ 3651 0f98 00C0      		rjmp .L112
+ 3652               	.LVL423:
+ 3653               	.L116:
+ 3654               	.LBE44:
+ 547:ili9341.c     ****       if(i & 7) byte <<= 1;
+ 3655               		.loc 1 547 0
+ 3656 0f9a 1F82      		std Y+7,__zero_reg__
+ 3657 0f9c 1E82      		std Y+6,__zero_reg__
+ 550:ili9341.c     ****     }
+ 3658               		.loc 1 550 0
+ 3659 0f9e C801      		movw r24,r16
+ 3660 0fa0 860D      		add r24,r6
+ 3661 0fa2 971D      		adc r25,r7
+ 3662 0fa4 9D83      		std Y+5,r25
+ 3663 0fa6 8C83      		std Y+4,r24
+ 3664 0fa8 00C0      		rjmp .L115
+ 3665               		.cfi_endproc
+ 3666               	.LFE33:
+ 3668               	.global	ili9341_drawXBitmap
+ 3670               	ili9341_drawXBitmap:
+ 3671               	.LFB34:
+ 554:ili9341.c     **** 
+ 555:ili9341.c     **** 
+ 556:ili9341.c     **** //Draw XBitMap Files (*.xbm), exported from GIMP,
+ 557:ili9341.c     **** //Usage: Export from GIMP to *.xbm, rename *.xbm to *.c and open in editor.
+ 558:ili9341.c     **** //C Array can be directly used with this function
+ 559:ili9341.c     **** void ili9341_drawXBitmap(int16_t x, int16_t y, const uint8_t *bitmap, int16_t w, int16_t h, uint16_
+ 560:ili9341.c     **** {
+ 3672               		.loc 1 560 0
+ 3673               		.cfi_startproc
+ 3674               	.LVL424:
+ 3675 0faa 2F92      		push r2
+ 3676               	.LCFI205:
+ 3677               		.cfi_def_cfa_offset 3
+ 3678               		.cfi_offset 2, -2
+ 3679 0fac 3F92      		push r3
+ 3680               	.LCFI206:
+ 3681               		.cfi_def_cfa_offset 4
+ 3682               		.cfi_offset 3, -3
+ 3683 0fae 4F92      		push r4
+ 3684               	.LCFI207:
+ 3685               		.cfi_def_cfa_offset 5
+ 3686               		.cfi_offset 4, -4
+ 3687 0fb0 5F92      		push r5
+ 3688               	.LCFI208:
+ 3689               		.cfi_def_cfa_offset 6
+ 3690               		.cfi_offset 5, -5
+ 3691 0fb2 6F92      		push r6
+ 3692               	.LCFI209:
+ 3693               		.cfi_def_cfa_offset 7
+ 3694               		.cfi_offset 6, -6
+ 3695 0fb4 7F92      		push r7
+ 3696               	.LCFI210:
+ 3697               		.cfi_def_cfa_offset 8
+ 3698               		.cfi_offset 7, -7
+ 3699 0fb6 8F92      		push r8
+ 3700               	.LCFI211:
+ 3701               		.cfi_def_cfa_offset 9
+ 3702               		.cfi_offset 8, -8
+ 3703 0fb8 9F92      		push r9
+ 3704               	.LCFI212:
+ 3705               		.cfi_def_cfa_offset 10
+ 3706               		.cfi_offset 9, -9
+ 3707 0fba AF92      		push r10
+ 3708               	.LCFI213:
+ 3709               		.cfi_def_cfa_offset 11
+ 3710               		.cfi_offset 10, -10
+ 3711 0fbc BF92      		push r11
+ 3712               	.LCFI214:
+ 3713               		.cfi_def_cfa_offset 12
+ 3714               		.cfi_offset 11, -11
+ 3715 0fbe CF92      		push r12
+ 3716               	.LCFI215:
+ 3717               		.cfi_def_cfa_offset 13
+ 3718               		.cfi_offset 12, -12
+ 3719 0fc0 DF92      		push r13
+ 3720               	.LCFI216:
+ 3721               		.cfi_def_cfa_offset 14
+ 3722               		.cfi_offset 13, -13
+ 3723 0fc2 EF92      		push r14
+ 3724               	.LCFI217:
+ 3725               		.cfi_def_cfa_offset 15
+ 3726               		.cfi_offset 14, -14
+ 3727 0fc4 FF92      		push r15
+ 3728               	.LCFI218:
+ 3729               		.cfi_def_cfa_offset 16
+ 3730               		.cfi_offset 15, -15
+ 3731 0fc6 0F93      		push r16
+ 3732               	.LCFI219:
+ 3733               		.cfi_def_cfa_offset 17
+ 3734               		.cfi_offset 16, -16
+ 3735 0fc8 1F93      		push r17
+ 3736               	.LCFI220:
+ 3737               		.cfi_def_cfa_offset 18
+ 3738               		.cfi_offset 17, -17
+ 3739 0fca CF93      		push r28
+ 3740               	.LCFI221:
+ 3741               		.cfi_def_cfa_offset 19
+ 3742               		.cfi_offset 28, -18
+ 3743 0fcc DF93      		push r29
+ 3744               	.LCFI222:
+ 3745               		.cfi_def_cfa_offset 20
+ 3746               		.cfi_offset 29, -19
+ 3747 0fce 00D0      		rcall .
+ 3748 0fd0 00D0      		rcall .
+ 3749 0fd2 1F92      		push __zero_reg__
+ 3750               	.LCFI223:
+ 3751               		.cfi_def_cfa_offset 25
+ 3752 0fd4 CDB7      		in r28,__SP_L__
+ 3753 0fd6 DEB7      		in r29,__SP_H__
+ 3754               	.LCFI224:
+ 3755               		.cfi_def_cfa_register 28
+ 3756               	/* prologue: function */
+ 3757               	/* frame size = 5 */
+ 3758               	/* stack size = 23 */
+ 3759               	.L__stack_usage = 23
+ 3760 0fd8 2C01      		movw r4,r24
+ 3761 0fda 4B01      		movw r8,r22
+ 3762 0fdc 3A01      		movw r6,r20
+ 3763 0fde 5901      		movw r10,r18
+ 3764 0fe0 1801      		movw r2,r16
+ 3765               	.LVL425:
+ 561:ili9341.c     **** 
+ 562:ili9341.c     ****   int16_t i, j, byteWidth = (w + 7) / 8;
+ 3766               		.loc 1 562 0
+ 3767 0fe2 C901      		movw r24,r18
+ 3768               	.LVL426:
+ 3769 0fe4 0796      		adiw r24,7
+ 3770 0fe6 97FD      		sbrc r25,7
+ 3771 0fe8 0796      		adiw r24,7
+ 3772               	.L118:
+ 3773 0fea 9C01      		movw r18,r24
+ 3774               	.LVL427:
+ 3775 0fec 93E0      		ldi r25,3
+ 3776               		1:
+ 3777 0fee 3595      		asr r19
+ 3778 0ff0 2795      		ror r18
+ 3779 0ff2 9A95      		dec r25
+ 3780 0ff4 01F4      		brne 1b
+ 3781 0ff6 3B83      		std Y+3,r19
+ 3782 0ff8 2A83      		std Y+2,r18
+ 563:ili9341.c     ****   uint8_t byte;
+ 564:ili9341.c     **** 
+ 565:ili9341.c     ****   for(j=0; j<h; j++) {
+ 3783               		.loc 1 565 0
+ 3784 0ffa 8401      		movw r16,r8
+ 3785               	.LVL428:
+ 3786 0ffc D12C      		mov r13,__zero_reg__
+ 3787 0ffe C12C      		mov r12,__zero_reg__
+ 3788               	.LVL429:
+ 3789               	.L119:
+ 3790               		.loc 1 565 0 is_stmt 0 discriminator 1
+ 3791 1000 C801      		movw r24,r16
+ 3792 1002 8819      		sub r24,r8
+ 3793 1004 9909      		sbc r25,r9
+ 3794 1006 8215      		cp r24,r2
+ 3795 1008 9305      		cpc r25,r3
+ 3796 100a 04F4      		brge .+2
+ 3797 100c 00C0      		rjmp .L125
+ 3798               	/* epilogue start */
+ 566:ili9341.c     ****     for(i=0; i<w; i++ ) {
+ 567:ili9341.c     ****       if(i & 7) byte >>= 1;
+ 568:ili9341.c     ****       else      byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
+ 569:ili9341.c     ****       if(byte & 0x01) ili9341_drawpixel(x+i, y+j, color);
+ 570:ili9341.c     ****     }
+ 571:ili9341.c     ****   }
+ 572:ili9341.c     **** }
+ 3799               		.loc 1 572 0 is_stmt 1
+ 3800 100e 0F90      		pop __tmp_reg__
+ 3801 1010 0F90      		pop __tmp_reg__
+ 3802 1012 0F90      		pop __tmp_reg__
+ 3803 1014 0F90      		pop __tmp_reg__
+ 3804 1016 0F90      		pop __tmp_reg__
+ 3805 1018 DF91      		pop r29
+ 3806 101a CF91      		pop r28
+ 3807               	.LVL430:
+ 3808 101c 1F91      		pop r17
+ 3809               	.LVL431:
+ 3810 101e 0F91      		pop r16
+ 3811               	.LVL432:
+ 3812 1020 FF90      		pop r15
+ 3813               	.LVL433:
+ 3814 1022 EF90      		pop r14
+ 3815               	.LVL434:
+ 3816 1024 DF90      		pop r13
+ 3817               	.LVL435:
+ 3818 1026 CF90      		pop r12
+ 3819               	.LVL436:
+ 3820 1028 BF90      		pop r11
+ 3821               	.LVL437:
+ 3822 102a AF90      		pop r10
+ 3823               	.LVL438:
+ 3824 102c 9F90      		pop r9
+ 3825               	.LVL439:
+ 3826 102e 8F90      		pop r8
+ 3827               	.LVL440:
+ 3828 1030 7F90      		pop r7
+ 3829               	.LVL441:
+ 3830 1032 6F90      		pop r6
+ 3831               	.LVL442:
+ 3832 1034 5F90      		pop r5
+ 3833               	.LVL443:
+ 3834 1036 4F90      		pop r4
+ 3835               	.LVL444:
+ 3836 1038 3F90      		pop r3
+ 3837               	.LVL445:
+ 3838 103a 2F90      		pop r2
+ 3839               	.LVL446:
+ 3840 103c 0895      		ret
+ 3841               	.LVL447:
+ 3842               	.L123:
+ 567:ili9341.c     ****       else      byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
+ 3843               		.loc 1 567 0
+ 3844 103e 8C81      		ldd r24,Y+4
+ 3845 1040 9D81      		ldd r25,Y+5
+ 3846               	.LVL448:
+ 3847 1042 8770      		andi r24,7
+ 3848 1044 9927      		clr r25
+ 3849 1046 892B      		or r24,r25
+ 3850 1048 01F0      		breq .L120
+ 567:ili9341.c     ****       else      byte   = pgm_read_byte(bitmap + j * byteWidth + i / 8);
+ 3851               		.loc 1 567 0 is_stmt 0 discriminator 1
+ 3852 104a 3981      		ldd r19,Y+1
+ 3853 104c 3695      		lsr r19
+ 3854 104e 3983      		std Y+1,r19
+ 3855               	.LVL449:
+ 3856               	.L121:
+ 569:ili9341.c     ****     }
+ 3857               		.loc 1 569 0 is_stmt 1
+ 3858 1050 9981      		ldd r25,Y+1
+ 3859 1052 90FF      		sbrs r25,0
+ 3860 1054 00C0      		rjmp .L122
+ 569:ili9341.c     ****     }
+ 3861               		.loc 1 569 0 is_stmt 0 discriminator 1
+ 3862 1056 A701      		movw r20,r14
+ 3863 1058 B801      		movw r22,r16
+ 3864 105a 8C81      		ldd r24,Y+4
+ 3865 105c 9D81      		ldd r25,Y+5
+ 3866 105e 840D      		add r24,r4
+ 3867 1060 951D      		adc r25,r5
+ 3868 1062 0E94 0000 		call ili9341_drawpixel
+ 3869               	.LVL450:
+ 3870               	.L122:
+ 566:ili9341.c     ****     for(i=0; i<w; i++ ) {
+ 3871               		.loc 1 566 0 is_stmt 1 discriminator 2
+ 3872 1066 2C81      		ldd r18,Y+4
+ 3873 1068 3D81      		ldd r19,Y+5
+ 3874 106a 2F5F      		subi r18,-1
+ 3875 106c 3F4F      		sbci r19,-1
+ 3876 106e 3D83      		std Y+5,r19
+ 3877 1070 2C83      		std Y+4,r18
+ 3878               	.LVL451:
+ 3879               	.L124:
+ 566:ili9341.c     ****     for(i=0; i<w; i++ ) {
+ 3880               		.loc 1 566 0 is_stmt 0 discriminator 1
+ 3881 1072 8C81      		ldd r24,Y+4
+ 3882 1074 9D81      		ldd r25,Y+5
+ 3883 1076 8A15      		cp r24,r10
+ 3884 1078 9B05      		cpc r25,r11
+ 3885 107a 04F0      		brlt .L123
+ 3886               	.LVL452:
+ 3887 107c 0F5F      		subi r16,-1
+ 3888 107e 1F4F      		sbci r17,-1
+ 3889               	.LVL453:
+ 3890 1080 2A81      		ldd r18,Y+2
+ 3891 1082 3B81      		ldd r19,Y+3
+ 3892 1084 C20E      		add r12,r18
+ 3893 1086 D31E      		adc r13,r19
+ 3894 1088 00C0      		rjmp .L119
+ 3895               	.L120:
+ 3896               	.LVL454:
+ 3897               	.LBB45:
+ 568:ili9341.c     ****       if(byte & 0x01) ili9341_drawpixel(x+i, y+j, color);
+ 3898               		.loc 1 568 0 is_stmt 1
+ 3899 108a EC81      		ldd r30,Y+4
+ 3900 108c FD81      		ldd r31,Y+5
+ 3901 108e 83E0      		ldi r24,3
+ 3902               		1:
+ 3903 1090 F595      		asr r31
+ 3904 1092 E795      		ror r30
+ 3905 1094 8A95      		dec r24
+ 3906 1096 01F4      		brne 1b
+ 3907 1098 EC0D      		add r30,r12
+ 3908 109a FD1D      		adc r31,r13
+ 3909 109c E60D      		add r30,r6
+ 3910 109e F71D      		adc r31,r7
+ 3911               	/* #APP */
+ 3912               	 ;  568 "ili9341.c" 1
+ 3913 10a0 8491      		lpm r24, Z
+ 3914               		
+ 3915               	 ;  0 "" 2
+ 3916               	/* #NOAPP */
+ 3917 10a2 8983      		std Y+1,r24
+ 3918               	.LVL455:
+ 3919 10a4 00C0      		rjmp .L121
+ 3920               	.LVL456:
+ 3921               	.L125:
+ 3922               	.LBE45:
+ 566:ili9341.c     ****       if(i & 7) byte >>= 1;
+ 3923               		.loc 1 566 0
+ 3924 10a6 1D82      		std Y+5,__zero_reg__
+ 3925 10a8 1C82      		std Y+4,__zero_reg__
+ 3926 10aa 00C0      		rjmp .L124
+ 3927               		.cfi_endproc
+ 3928               	.LFE34:
+ 3930               	.global	_height
+ 3931               		.data
+ 3934               	_height:
+ 3935 0000 F000      		.word	240
+ 3936               	.global	_width
+ 3939               	_width:
+ 3940 0002 4001      		.word	320
+ 3941               	.global	LCD_H
+ 3944               	LCD_H:
+ 3945 0004 F000      		.word	240
+ 3946               	.global	LCD_W
+ 3949               	LCD_W:
+ 3950 0006 4001      		.word	320
+ 3951               		.text
+ 3952               	.Letext0:
+ 3953               		.file 3 "/usr/avr/include/stdint.h"
+ 3954               		.file 4 "<built-in>"
+DEFINED SYMBOLS
+                            *ABS*:0000000000000000 ili9341.c
+     /tmp/cc8cCjqb.s:2      *ABS*:000000000000003e __SP_H__
+     /tmp/cc8cCjqb.s:3      *ABS*:000000000000003d __SP_L__
+     /tmp/cc8cCjqb.s:4      *ABS*:000000000000003f __SREG__
+     /tmp/cc8cCjqb.s:5      *ABS*:0000000000000000 __tmp_reg__
+     /tmp/cc8cCjqb.s:6      *ABS*:0000000000000001 __zero_reg__
+     /tmp/cc8cCjqb.s:12     .text:0000000000000000 ili9341_hard_init
+     /tmp/cc8cCjqb.s:36     .text:000000000000000a ili9341_spi_init
+     /tmp/cc8cCjqb.s:65     .text:000000000000001e ili9341_spi_send
+     /tmp/cc8cCjqb.s:89     .text:0000000000000028 ili9341_writecommand8
+     /tmp/cc8cCjqb.s:127    .text:000000000000003e ili9341_writedata8
+     /tmp/cc8cCjqb.s:164    .text:0000000000000052 ili9341_setaddress
+     /tmp/cc8cCjqb.s:268    .text:00000000000000be ili9341_hard_reset
+     /tmp/cc8cCjqb.s:338    .text:00000000000000fc ili9341_init
+     /tmp/cc8cCjqb.s:722    .text:000000000000031e ili9341_pushcolour
+     /tmp/cc8cCjqb.s:754    .text:0000000000000330 ili9341_clear
+     /tmp/cc8cCjqb.s:3944   .data:0000000000000004 LCD_H
+     /tmp/cc8cCjqb.s:3949   .data:0000000000000006 LCD_W
+     /tmp/cc8cCjqb.s:858    .text:00000000000003a4 ili9341_drawpixel
+     /tmp/cc8cCjqb.s:928    .text:00000000000003e6 ili9341_drawvline
+     /tmp/cc8cCjqb.s:1032   .text:0000000000000458 ili9341_drawhline
+     /tmp/cc8cCjqb.s:1128   .text:00000000000004ca ili9341_fillrect
+     /tmp/cc8cCjqb.s:1285   .text:000000000000058a ili9341_setRotation
+     /tmp/cc8cCjqb.s:1365   .text:00000000000005e2 ili9341_drawCircle
+     /tmp/cc8cCjqb.s:1695   .text:0000000000000782 ili9341_drawCircleHelper
+     /tmp/cc8cCjqb.s:2021   .text:000000000000090c ili9341_drawLine
+     /tmp/cc8cCjqb.s:2326   .text:0000000000000a50 ili9341_drawFastVLine
+     /tmp/cc8cCjqb.s:2366   .text:0000000000000a6c ili9341_fillCircleHelper
+     /tmp/cc8cCjqb.s:2654   .text:0000000000000bbc ili9341_fillCircle
+     /tmp/cc8cCjqb.s:2750   .text:0000000000000c10 ili9341_drawFastHLine
+     /tmp/cc8cCjqb.s:2789   .text:0000000000000c2a ili9341_drawRect
+     /tmp/cc8cCjqb.s:2898   .text:0000000000000c92 ili9341_fillRect
+     /tmp/cc8cCjqb.s:3000   .text:0000000000000cde ili9341_drawRoundRect
+     /tmp/cc8cCjqb.s:3249   .text:0000000000000dfe ili9341_fillRoundRect
+     /tmp/cc8cCjqb.s:3411   .text:0000000000000e9c ili9341_drawBitmap
+     /tmp/cc8cCjqb.s:3670   .text:0000000000000faa ili9341_drawXBitmap
+     /tmp/cc8cCjqb.s:3934   .data:0000000000000000 _height
+     /tmp/cc8cCjqb.s:3939   .data:0000000000000002 _width
+
+UNDEFINED SYMBOLS
+__do_copy_data
