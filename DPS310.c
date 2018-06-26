@@ -6,9 +6,11 @@
 
 
 
+#define DPS310_W 0xee
+#define DPS310_R 0xef
 
-#define DPS310_W 0xEC	//Adresse DPS310
-#define DPS310_R 0xED
+//#define DPS310_W 0xEC	//Adresse DPS310
+//#define DPS310_R 0xED
 
 #define PSR_B2	0x00
 #define PSR_B1	0x01
@@ -186,6 +188,47 @@ int32_t DPS310_get_raw_temp(void)
  */
 	ret = tmp32;
   return ret;
+}
+int32_t DPS310_gettemp(void)
+{
+	uint8_t buffer[3] = {0};
+	//read raw pressure data to buffer
+
+	buffer[0]= DPS310_read_8(TMP_B2);
+	buffer[1]= DPS310_read_8(TMP_B1);
+	buffer[2]= DPS310_read_8(TMP_B0);
+
+	//compose raw temperature value from buffer
+	int32_t temp =    (uint32_t)buffer[0] << 16
+					| (uint32_t)buffer[1] << 8
+					| (uint32_t)buffer[2];
+	//recognize non-32-bit negative numbers
+	//and convert them to 32-bit negative numbers using 2's complement
+	if(temp & ((uint32_t)1 << 23))
+	{
+		temp -= (uint32_t)1 << 24;
+	}
+
+	//return temperature
+	
+	return temp;
+}
+int32_t DPS310_calcTemp(int32_t raw, int32_t m_c0Half,int32_t m_c1)
+{
+	double temp = raw;
+	
+	//scale temperature according to scaling table and oversampling
+	temp /= 1572864;
+
+	//update last measured temperature
+	//it will be used for pressure compensation
+	//m_lastTempScal = temp;
+
+	//Calculate compensated temperature
+	temp = m_c0Half + m_c1 * temp;
+
+	//return temperature
+	return (int32_t)temp;
 }
 
 int32_t calculate_temperature_pressure(void)

@@ -50,7 +50,7 @@ MCU = atmega328p
 #     calculate timings. Do NOT tack on a 'UL' at the end, this will be done
 #     automatically to create a 32-bit value in your source code.
 #     Typical values are:
-F_CPU =  16000000
+F_CPU =  8000000
 #         F_CPU =  1843200
 #         F_CPU =  2000000
 #         F_CPU =  3686400
