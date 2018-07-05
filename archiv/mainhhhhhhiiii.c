@@ -12,9 +12,9 @@
 
 #define DPS310_W 0xee
 #define DPS310_R 0xef
-#define PRS_B2	0x00
-#define PRS_B1	0x01
-#define PRS_B0	0x02
+#define PSR_B2	0x00
+#define PSR_B1	0x01
+#define PSR_B0	0x02
 #define TMP_B2 	0x03
 #define TMP_B1	0x04
 #define TMP_B0	0x05
@@ -49,7 +49,7 @@
 
 extern uint16_t vsetx,vsety,vactualx,vactualy,isetx,isety,iactualx,iactualy;
 static FILE mydata = FDEV_SETUP_STREAM(ili9341_putchar_printf, NULL, _FDEV_SETUP_WRITE);
-uint8_t result,  xpos, error, x, value, rdy;
+uint8_t result,  xpos, error, x;
 uint16_t xx, yy, zell, COLOR, var_x,color;
 
 //compensation coefficients
@@ -62,23 +62,16 @@ int16_t m_C11;
 int16_t m_C20;
 int16_t m_C21;
 int16_t m_C30;
-
+int8_t t_vorko;
+uint16_t p_vorko, t_nachko, p_nachko;
 uint8_t buffer[3] = {0};
-uint8_t meas=0;
-uint8_t id=0;
+int32_t temp,temptemp;
+int32_t temp_raw, temp_comp;
+int32_t pres;
+uint8_t value, value2;//temporaerer wert
 
-
-
-float ttt=0;
-long ccc=0;
-
-uint8_t buff[6]= {0};
-	
-	
-
-
-uint32_t Pressure;
-uint32_t Temperature;
+float Pressure;
+float Temperature;
 
 uint8_t bit;
 
@@ -101,7 +94,6 @@ uint8_t DPS310_read(uint8_t reg)
 		if(TWIGetStatus() != 0x40)return 5;
 		result=TWIReadNACK();
 		TWIStop();
-		_delay_ms(2);
 	return result;	
 //Daten zurueckgeben
 }
@@ -116,8 +108,6 @@ uint8_t DPS310_write(uint8_t reg, uint8_t data)
 		TWIWrite(data);
 		if(TWIGetStatus() != 0x28)return 44;
 		TWIStop();
-		
-		_delay_ms(2);
 	return 0;	
 	
 	//Daten zurueckgeben
@@ -141,13 +131,7 @@ int16_t DPS310_readCoeffs(void)
     m_C0=(((int)buffer[0]<<8)|buffer[1])>>4;
     m_C0=m_C0/2;
    
-    //m_C1=((((int)buffer[1]<<8)|buffer[2])<<4)>>4;
-    
-    m_C1 = (((uint32_t)buffer[1] & 0x0F) << 8) | (uint32_t)buffer[2];
-	if(m_C1 & ((uint32_t)1 << 11))
-	{
-		m_C1 -= (uint32_t)1 << 12;
-	}
+    m_C1=((((int)buffer[1]<<8)|buffer[2])<<4)>>4;
       
     m_C00= ((((long)buffer[3]<<8)|buffer[4])<<8)|buffer[5];
     m_C00=(m_C00<<8)>>12;
@@ -169,25 +153,23 @@ int16_t DPS310_readCoeffs(void)
 }
 void printcoeffs(void)
 {
-	
-	uint8_t xxx=150;
-	ili9341_setcursor(xxx,0);
+	ili9341_setcursor(0,0);
 	printf("1= %d", m_C0);
-	ili9341_setcursor(xxx,20);
-	printf("2= %03d", m_C1);
-	ili9341_setcursor(xxx,40);
+	ili9341_setcursor(0,20);
+	printf("2= %d", m_C1);
+	ili9341_setcursor(0,40);
 	printf("3= %ld", m_C00);
-	ili9341_setcursor(xxx,60);
+	ili9341_setcursor(0,60);
 	printf("4= %ld", m_C10);
-	ili9341_setcursor(xxx,80);
+	ili9341_setcursor(0,80);
 	printf("5= %d", m_C01);
-	ili9341_setcursor(xxx,100);
+	ili9341_setcursor(0,100);
 	printf("6= %d", m_C11);
-	ili9341_setcursor(xxx,120);
+	ili9341_setcursor(0,120);
 	printf("7= %d", m_C20);
-	ili9341_setcursor(xxx,140);
+	ili9341_setcursor(0,140);
 	printf("8= %d", m_C21);
-	ili9341_setcursor(xxx,160);
+	ili9341_setcursor(0,160);
 	printf("9= %d", m_C30);
 }
 
@@ -218,91 +200,16 @@ uint8_t DPS310_check(uint8_t checkbit)
 	}
 	return tmpval;
 }
-void init_ili9341(void)
+
+int main(void)
 {
 	stdout = & mydata;
 	ili9341_init();//initial driver setup to drive ili9341
 	ili9341_clear(BLACK);//fill screen with black colour
-	_delay_ms(100);
+	_delay_ms(1000);
 	ili9341_setRotation(3);//rotate screen
 	_delay_ms(2);
-	ili9341_settextcolour(YELLOW,BLACK);
-	ili9341_setcursor(0,0);
-	ili9341_settextsize(2);
-}
-void DPS310_init(void)
-{
-	uint8_t bit=0;
-	
-	while(bit==0)// go on if Sensor ready flag is set
-	{
-		if((DPS310_read(MEAS_CFG) & (1<<6)) != 0)bit=1;
-		DPS310_readCoeffs();
-		DPS310_write(PRS_CFG, 0x00);//eight times low power
-		DPS310_write(TMP_CFG, 0x80);// 1 measurement
-		DPS310_write(CFG_REG, 0x00);
-		DPS310_write(MEAS_CFG, 0x07);
-		DPS310_write(0x0E, 0xA5);
-		DPS310_write(0x0F, 0x96);
-		DPS310_write(0x62, 0x02);
-		DPS310_write(0x0E, 0x00);
-		DPS310_write(0x0F, 0x00);
-	}
-}
-uint32_t DPS310_get_temp(void)
-{
-	long temp_raw;
-	double temp_sc;
-	double temp_comp;
-	
-		buff[0] = DPS310_read(TMP_B2);
-		buff[1] = DPS310_read(TMP_B1);
-		buff[2] = DPS310_read(TMP_B0);
-		
-		temp_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
-		temp_raw=(temp_raw<<8)>>8;
-		
-		temp_sc = (float)temp_raw/524288;
-		temp_comp=m_C0+m_C1*temp_sc;
-		
-		
-		return temp_comp*100; //2505 entspricht 25,5 Grad
 
-}
-
-
-uint32_t DPS310_get_pres(void)
-{
-	long temp_raw;
-	double temp_sc;
-	
-	long prs_raw;
-	double prs_sc;
-	double prs_comp;
-	
-		buff[0] = DPS310_read(TMP_B2);
-		buff[1] = DPS310_read(TMP_B1);
-		buff[2] = DPS310_read(TMP_B0);
-		
-		temp_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
-		temp_raw=(temp_raw<<8)>>8;
-		
-		temp_sc = (float)temp_raw/524288;
-		
-		buff[0] = DPS310_read(PRS_B2);
-		buff[1] = DPS310_read(PRS_B1);
-		buff[2] = DPS310_read(PRS_B0);
-		
-		prs_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
-		prs_raw=(prs_raw<<8)>>8;
-		
-		prs_sc = (float)prs_raw/524288;
-		prs_comp=m_C00+prs_sc*(m_C10+prs_sc*(m_C20+(prs_sc*m_C30)))+temp_sc*m_C01+temp_sc*prs_sc*(m_C11+(prs_sc*m_C21));
-		return prs_comp; //2505 entspricht 25,5 Grad
-}
-int main(void)
-{
-	init_ili9341();
 	//display_init();//display initial data
 	yy=240;
 	xx=0;
@@ -310,40 +217,115 @@ int main(void)
 	color=123;
 	var_x=0x01;
 	
+	t_vorko=0;
+	t_nachko=0;
+	p_vorko=0;
+	p_nachko=0;
 	value=0;
-	rdy=0;
+	value2=0;
+	
+	pres=0;
+	bit=0b10000000;
+	
+temp_raw=0;
+	ili9341_settextcolour(YELLOW,BLACK);
+	ili9341_setcursor(0,0);
+	ili9341_settextsize(2);
+	
 	TWIInit();
+	_delay_ms(500);
 	
 	
-	DPS310_init();
+	DPS310_readCoeffs();
+	_delay_ms(500);
+	
+	_delay_ms(500);
+	DPS310_write(PRS_CFG, 0x01);//eight times low power
+	_delay_ms(500);
+	DPS310_write(TMP_CFG, 0x83);// times
+	_delay_ms(500);
+	DPS310_write(CFG_REG, 0x00);
 	
 	
-
 	while(1)
 	{
-				
-		id = DPS310_read(PRODUCT_ID);
-		meas = DPS310_read(MEAS_CFG);
+		DPS310_write(MEAS_CFG, 0x00);//temperature meassurement
+		//DPS310_sreset();
+		//value = DPS310_read(0x0D);//TMP_B2
+		ili9341_setcursor(0,90);
+		printf("TMP_B0 = %d",DPS310_check(TMP_RDY));
+		/*
+		if(DPS310_check(SENSOR_RDY))
+		{
+			ili9341_setcursor(0,0);
+			printf("Sensor is ready....");
+		}
+		*/
+		_delay_ms(500);
+		if(DPS310_check(TMP_RDY))
+		{
+			buffer[0]= DPS310_read(TMP_B2);//TMP_B0
+			buffer[1]= DPS310_read(TMP_B1);//TMP_B1
+			buffer[2]= DPS310_read(TMP_B0);//TMP_B0
+			
+			
+			ili9341_setcursor(0,30);
+			printf("TMP_B2 = %d", buffer[0]);
+			ili9341_setcursor(0,50);
+			printf("TMP_B1 = %d", buffer[1]);
+			ili9341_setcursor(0,70);
+			printf("                     ");
+			ili9341_setcursor(0,70);
+			printf("TMP_B0 = %d", buffer[2]);
+		}
 		
-		Temperature=DPS310_get_temp();
-		Pressure=DPS310_get_pres();
-		ili9341_setcursor(0,00);
-		printf("temp_raw = %03d", id);
-	
-		ili9341_setcursor(0,200);
-		printf("Temperature = %03ld",Temperature);
-		ili9341_setcursor(0,220);
-		printf("Pressure = %ld",Pressure);
 		
-
+		/*
+		ili9341_setcursor(0,0);
+		printf("Prod = %x", value);
 		
-		//printcoeffs();
-	
+		ili9341_setcursor(0,30);
+		if(DPS310_check(COEF_RDY))
+		{
+			printf("bit = %d", 177);
+		}
 		
-	
-
-	_delay_ms(10);
 		
+		_delay_ms(500);
+		buffer[1]= DPS310_read(TMP_B1);//TMP_B1
+		_delay_ms(500);
+		buffer[2]= DPS310_read(TMP_B0);//TMP_B0
+		_delay_ms(500);
+		
+		*/
+		
+		
+		/*
+		temp=0;
+		//compose raw temperature value from buffer
+		temp=((((long)buffer[0]<<8)|buffer[1])<<8)|buffer[2];
+		temp=(temp<<8)>>8;
+		bit=0;
+		bit = DPS310_read(SENS_OP_STATUS);
+		ili9341_setcursor(0,190);
+		printf("bit = %d", bit);
+		if (COEFF_READY)
+		{
+		
+		ili9341_setcursor(0,0);
+		printf("TMP_B2 = %d", buffer[0]);
+		ili9341_setcursor(0,20);
+		printf("TMP_B1 = %d", buffer[1]);
+		ili9341_setcursor(0,40);
+		printf("                     ");
+		ili9341_setcursor(0,40);
+		printf("TMP_B0 = %d", buffer[2]);
+		ili9341_setcursor(0,60);
+		printf("temp= %ld", temp);
+		
+		}
+	*/
+		_delay_ms(50);
 	
 	}//end of while
 

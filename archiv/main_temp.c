@@ -67,18 +67,13 @@ uint8_t buffer[3] = {0};
 uint8_t meas=0;
 uint8_t id=0;
 
-
-
 float ttt=0;
 long ccc=0;
 
-uint8_t buff[6]= {0};
-	
-	
 
 
-uint32_t Pressure;
-uint32_t Temperature;
+float Pressure;
+float Temperature;
 
 uint8_t bit;
 
@@ -230,76 +225,26 @@ void init_ili9341(void)
 	ili9341_setcursor(0,0);
 	ili9341_settextsize(2);
 }
-void DPS310_init(void)
-{
-	uint8_t bit=0;
-	
-	while(bit==0)// go on if Sensor ready flag is set
-	{
-		if((DPS310_read(MEAS_CFG) & (1<<6)) != 0)bit=1;
-		DPS310_readCoeffs();
-		DPS310_write(PRS_CFG, 0x00);//eight times low power
-		DPS310_write(TMP_CFG, 0x80);// 1 measurement
-		DPS310_write(CFG_REG, 0x00);
-		DPS310_write(MEAS_CFG, 0x07);
-		DPS310_write(0x0E, 0xA5);
-		DPS310_write(0x0F, 0x96);
-		DPS310_write(0x62, 0x02);
-		DPS310_write(0x0E, 0x00);
-		DPS310_write(0x0F, 0x00);
-	}
-}
+
 uint32_t DPS310_get_temp(void)
 {
-	long temp_raw;
-	double temp_sc;
-	double temp_comp;
 	
-		buff[0] = DPS310_read(TMP_B2);
-		buff[1] = DPS310_read(TMP_B1);
-		buff[2] = DPS310_read(TMP_B0);
+	long temp_raw;
+	float temp_sc;
+	float temp_comp;
+	
+		buffer[0] = DPS310_read(TMP_B2);
+		buffer[1] = DPS310_read(TMP_B1);
+		buffer[2] = DPS310_read(TMP_B0);
 		
-		temp_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
+		temp_raw=((((long)buffer[0]<<8)|buffer[1])<<8)|buffer[2];
 		temp_raw=(temp_raw<<8)>>8;
 		
 		temp_sc = (float)temp_raw/524288;
 		temp_comp=m_C0+m_C1*temp_sc;
-		
-		
 		return temp_comp*100; //2505 entspricht 25,5 Grad
-
 }
 
-
-uint32_t DPS310_get_pres(void)
-{
-	long temp_raw;
-	double temp_sc;
-	
-	long prs_raw;
-	double prs_sc;
-	double prs_comp;
-	
-		buff[0] = DPS310_read(TMP_B2);
-		buff[1] = DPS310_read(TMP_B1);
-		buff[2] = DPS310_read(TMP_B0);
-		
-		temp_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
-		temp_raw=(temp_raw<<8)>>8;
-		
-		temp_sc = (float)temp_raw/524288;
-		
-		buff[0] = DPS310_read(PRS_B2);
-		buff[1] = DPS310_read(PRS_B1);
-		buff[2] = DPS310_read(PRS_B0);
-		
-		prs_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
-		prs_raw=(prs_raw<<8)>>8;
-		
-		prs_sc = (float)prs_raw/524288;
-		prs_comp=m_C00+prs_sc*(m_C10+prs_sc*(m_C20+(prs_sc*m_C30)))+temp_sc*m_C01+temp_sc*prs_sc*(m_C11+(prs_sc*m_C21));
-		return prs_comp; //2505 entspricht 25,5 Grad
-}
 int main(void)
 {
 	init_ili9341();
@@ -315,8 +260,29 @@ int main(void)
 	TWIInit();
 	
 	
-	DPS310_init();
+	_delay_ms(500);
 	
+		DPS310_readCoeffs();
+	
+	
+	DPS310_write(PRS_CFG, 0x01);//eight times low power
+	
+	
+	
+	DPS310_write(TMP_CFG, 0x80);// 1 measurement
+
+
+	DPS310_write(CFG_REG, 0x00);
+
+	
+	DPS310_write(MEAS_CFG, 0x07);
+	
+
+	DPS310_write(0x0E, 0xA5);
+	DPS310_write(0x0F, 0x96);
+	DPS310_write(0x62, 0x02);
+	DPS310_write(0x0E, 0x00);
+	DPS310_write(0x0F, 0x00);
 	
 
 	while(1)
@@ -325,19 +291,26 @@ int main(void)
 		id = DPS310_read(PRODUCT_ID);
 		meas = DPS310_read(MEAS_CFG);
 		
-		Temperature=DPS310_get_temp();
-		Pressure=DPS310_get_pres();
-		ili9341_setcursor(0,00);
-		printf("temp_raw = %03d", id);
+		
+		
 	
-		ili9341_setcursor(0,200);
-		printf("Temperature = %03ld",Temperature);
-		ili9341_setcursor(0,220);
-		printf("Pressure = %ld",Pressure);
 		
-
+		ili9341_setcursor(0,0);
+		printf("B2 = %03d", buffer[0]);
+		ili9341_setcursor(0,20);
+		printf("B1 = %03d", buffer[1]);
 		
-		//printcoeffs();
+		ili9341_setcursor(0,40);
+		printf("B0 = %03d",m_C1);
+		
+		ili9341_setcursor(0,70);
+		printf("ID = %03d", id);
+		ili9341_setcursor(0,90);
+		printf("comp = %03ld", DPS310_get_temp());
+		
+		ili9341_setcursor(0,10);
+		
+		printcoeffs();
 	
 		
 	

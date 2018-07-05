@@ -74,7 +74,9 @@ long ccc=0;
 
 uint8_t buff[6]= {0};
 	
-	
+	long prs_raw;
+	double prs_sc;
+	double prs_comp;
 
 
 uint32_t Pressure;
@@ -264,31 +266,14 @@ uint32_t DPS310_get_temp(void)
 		
 		temp_sc = (float)temp_raw/524288;
 		temp_comp=m_C0+m_C1*temp_sc;
-		
-		
 		return temp_comp*100; //2505 entspricht 25,5 Grad
-
 }
 
-
+/*
 uint32_t DPS310_get_pres(void)
 {
-	long temp_raw;
-	double temp_sc;
 	
-	long prs_raw;
-	double prs_sc;
-	double prs_comp;
 	
-		buff[0] = DPS310_read(TMP_B2);
-		buff[1] = DPS310_read(TMP_B1);
-		buff[2] = DPS310_read(TMP_B0);
-		
-		temp_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
-		temp_raw=(temp_raw<<8)>>8;
-		
-		temp_sc = (float)temp_raw/524288;
-		
 		buff[0] = DPS310_read(PRS_B2);
 		buff[1] = DPS310_read(PRS_B1);
 		buff[2] = DPS310_read(PRS_B0);
@@ -298,8 +283,8 @@ uint32_t DPS310_get_pres(void)
 		
 		prs_sc = (float)prs_raw/524288;
 		prs_comp=m_C00+prs_sc*(m_C10+prs_sc*(m_C20+(prs_sc*m_C30)))+temp_sc*m_C01+temp_sc*prs_sc*(m_C11+(prs_sc*m_C21));
-		return prs_comp; //2505 entspricht 25,5 Grad
-}
+		return prs_comp/100; //2505 entspricht 25,5 Grad
+}*/
 int main(void)
 {
 	init_ili9341();
@@ -326,14 +311,11 @@ int main(void)
 		meas = DPS310_read(MEAS_CFG);
 		
 		Temperature=DPS310_get_temp();
-		Pressure=DPS310_get_pres();
 		ili9341_setcursor(0,00);
 		printf("temp_raw = %03d", id);
 	
 		ili9341_setcursor(0,200);
 		printf("Temperature = %03ld",Temperature);
-		ili9341_setcursor(0,220);
-		printf("Pressure = %ld",Pressure);
 		
 
 		
