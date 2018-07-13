@@ -288,32 +288,23 @@ uint32_t DPS310_get_temp(uint8_t oversampling)
 
 uint32_t DPS310_get_pres(void)
 {
-	long temp_raw;
 	double temp_sc;
-	
 	long prs_raw;
 	double prs_sc;
 	double prs_comp;
 	
-		buff[0] = DPS310_read(TMP_B2);
-		buff[1] = DPS310_read(TMP_B1);
-		buff[2] = DPS310_read(TMP_B0);
+	temp_sc = DPS310_get_sc_temp(1);
 		
-		temp_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
-		temp_raw=(temp_raw<<8)>>8;
+	buff[0] = DPS310_read(PRS_B2);
+	buff[1] = DPS310_read(PRS_B1);
+	buff[2] = DPS310_read(PRS_B0);
 		
-		temp_sc = (float)temp_raw/524288;
+	prs_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
+	prs_raw=(prs_raw<<8)>>8;
 		
-		buff[0] = DPS310_read(PRS_B2);
-		buff[1] = DPS310_read(PRS_B1);
-		buff[2] = DPS310_read(PRS_B0);
-		
-		prs_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
-		prs_raw=(prs_raw<<8)>>8;
-		
-		prs_sc = (float)prs_raw/524288;
-		prs_comp=m_C00+prs_sc*(m_C10+prs_sc*(m_C20+(prs_sc*m_C30)))+temp_sc*m_C01+temp_sc*prs_sc*(m_C11+(prs_sc*m_C21));
-		return prs_comp; //2505 entspricht 25,5 Grad
+	prs_sc = (float)prs_raw/524288;
+	prs_comp=m_C00+prs_sc*(m_C10+prs_sc*(m_C20+(prs_sc*m_C30)))+temp_sc*m_C01+temp_sc*prs_sc*(m_C11+(prs_sc*m_C21));
+	return prs_comp; //2505 entspricht 25,5 Grad
 }
 int main(void)
 {
