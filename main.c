@@ -58,6 +58,10 @@
 #define POINTCOLOUR PINK
 
 
+//Accuracy for temp and pres
+#define LOW		1
+#define MID		2
+#define HIGH	3
 
 #define SENSOR_READY_CHECK (DPS310_read(MEAS_CFG) & (1<<6)) != 0
 #define COEFF_READY_CHECK (DPS310_read(MEAS_CFG) & (1<<7)) != 0
@@ -83,6 +87,9 @@ int16_t m_C30;
 uint8_t buffer[3] = {0};
 uint8_t meas=0;
 uint8_t id=0;
+
+uint8_t temp_oversampling;
+uint8_t prs_oversampling;
 
 
 
@@ -227,7 +234,7 @@ void init_ili9341(void)
 	ili9341_setcursor(0,0);
 	ili9341_settextsize(2);
 }
-void DPS310_init(void)
+void DPS310_init(uint8_t acc)
 {
 	uint8_t bit=0;
 	
@@ -235,18 +242,37 @@ void DPS310_init(void)
 	{
 		if(COEFF_READY_CHECK)bit=1;
 		DPS310_readCoeffs();
-		DPS310_write(PRS_CFG, 0x00);//eight times low power
-		DPS310_write(TMP_CFG, 0x80);// 1 measurement
-		DPS310_write(CFG_REG, 0x00);
-		DPS310_write(MEAS_CFG, 0x07);
-		DPS310_write(0x0E, 0xA5);
-		DPS310_write(0x0F, 0x96);
-		DPS310_write(0x62, 0x02);
-		DPS310_write(0x0E, 0x00);
-		DPS310_write(0x0F, 0x00);
-	}
+		
+		switch(acc)
+		{
+			case LOW:	DPS310_write(PRS_CFG, 0x01);//1x/sec 2 times
+						DPS310_write(TMP_CFG, 0x80);// external sens 1x/sec single
+						DPS310_write(CFG_REG, 0x00);
+						DPS310_write(MEAS_CFG, 0x07);
+						temp_oversampling=1;
+						prs_oversampling=1;
+						
+						break;
+						
+			case MID:	DPS310_write(PRS_CFG, 0x14);//16 times 2x/sec
+						DPS310_write(TMP_CFG, 0x90);// external sens 1x/sec single 
+						DPS310_write(CFG_REG, 0x04);
+						DPS310_write(MEAS_CFG, 0x07);
+						temp_oversampling=1;
+						prs_oversampling=16;
+						break;
+						
+			case HIGH:	DPS310_write(PRS_CFG, 0x26);//4x/sec 64 times
+						DPS310_write(TMP_CFG, 0xA0);// external sens 4x/sec
+						DPS310_write(CFG_REG, 0x04);
+						DPS310_write(MEAS_CFG, 0x07);
+						temp_oversampling=1;
+						prs_oversampling=64;
+						break;
+		}//end of switch
+	}//end of while
 }
-double DPS310_get_sc_temp(uint8_t oversampling)
+double DPS310_get_sc_temp(uint8_t ovrs)
 {
 
 	long temp_raw=0;
@@ -259,7 +285,7 @@ double DPS310_get_sc_temp(uint8_t oversampling)
 			
 	temp_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
 	temp_raw=(temp_raw<<8)>>8;
-	switch(oversampling)
+	switch(ovrs)
 	{
 		case 1:	scalfactor = 524288;break;
 		case 2:	scalfactor = 1572864;break;
@@ -274,26 +300,40 @@ double DPS310_get_sc_temp(uint8_t oversampling)
 	return temp_sc;
 }
 
-uint32_t DPS310_get_temp(uint8_t oversampling)
+uint32_t DPS310_get_temp(uint8_t ovrs)
 {
 	double temp_sc=0;
 	double temp_comp=0;
 
-			temp_sc=DPS310_get_sc_temp(oversampling);
+			temp_sc=DPS310_get_sc_temp(ovrs);
 			temp_comp=m_C0+m_C1*temp_sc;
 			
 			return temp_comp*100; //2505 entspricht 25,5 Grad
 }
 
+uint16_t vor_komma(uint32_t value)
+{
+	return value/100;
+	
+}
+uint8_t nach_komma(uint32_t value)
+{
+	uint8_t temp;
+	temp = value/100;
+	return value-(temp*100);
+	
+	
+}
 
-uint32_t DPS310_get_pres(void)
+uint32_t DPS310_get_pres(uint8_t t_ovrs, uint8_t p_ovrs)
 {
 	double temp_sc;
 	long prs_raw;
 	double prs_sc;
 	double prs_comp;
+	long scalfactor=1;
 	
-	temp_sc = DPS310_get_sc_temp(1);
+	temp_sc = DPS310_get_sc_temp(t_ovrs);
 		
 	buff[0] = DPS310_read(PRS_B2);
 	buff[1] = DPS310_read(PRS_B1);
@@ -301,8 +341,20 @@ uint32_t DPS310_get_pres(void)
 		
 	prs_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
 	prs_raw=(prs_raw<<8)>>8;
+	
+	switch(p_ovrs)
+	{
+		case 1:	scalfactor = 524288;break;
+		case 2:	scalfactor = 1572864;break;
+		case 4:	scalfactor = 3670016;break;
+		case 8:	scalfactor = 7864320;break;
+		case 16:	scalfactor = 253952;break;
+		case 32:	scalfactor = 516096;break;
+		case 64:	scalfactor = 1040384;break;
+		case 128:	scalfactor = 2088960;break;
+	}
 		
-	prs_sc = (float)prs_raw/524288;
+	prs_sc = (float)prs_raw/scalfactor;
 	prs_comp=m_C00+prs_sc*(m_C10+prs_sc*(m_C20+(prs_sc*m_C30)))+temp_sc*m_C01+temp_sc*prs_sc*(m_C11+(prs_sc*m_C21));
 	return prs_comp; //2505 entspricht 25,5 Grad
 }
@@ -320,8 +372,11 @@ int main(void)
 	rdy=0;
 	TWIInit();
 	
+	temp_oversampling=1;
+	prs_oversampling=4;
 	
-	DPS310_init();
+	
+	DPS310_init(HIGH);
 	
 	
 
@@ -331,15 +386,13 @@ int main(void)
 		id = DPS310_read(PRODUCT_ID);
 		meas = DPS310_read(MEAS_CFG);
 		
-		if(TEMP_READY_CHECK)Temperature=DPS310_get_temp(1);
-		if(PRES_READY_CHECK)Pressure=DPS310_get_pres();
-		ili9341_setcursor(0,00);
-		printf("temp_raw = %03d", id);
-	
+		if(TEMP_READY_CHECK)Temperature=DPS310_get_temp(temp_oversampling);
+		if(PRES_READY_CHECK)Pressure=DPS310_get_pres(temp_oversampling, prs_oversampling);
+		
 		ili9341_setcursor(0,200);
-		printf("Temperature = %03ld",Temperature);
+		printf("Temperature: %d.%1.2d", vor_komma(Temperature), nach_komma(Temperature));
 		ili9341_setcursor(0,220);
-		printf("Pressure = %ld",Pressure);
+		printf("Pressure: %d.%1.2d", vor_komma(Pressure), nach_komma(Pressure));
 		
 
 		
