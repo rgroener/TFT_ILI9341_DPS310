@@ -9,6 +9,7 @@
 #include "ili9341gfx.h"
 #include <avr/pgmspace.h>
 #include "grn_TWI.h"
+#include <avr/interrupt.h>
 
 #define DPS310_W 0xee
 #define DPS310_R 0xef
@@ -91,18 +92,20 @@ uint8_t id=0;
 uint8_t temp_oversampling;
 uint8_t prs_oversampling;
 
-
-
+uint8_t temp_new, temp_old, pres_new, pres_old;
+uint16_t xtime;
 float ttt=0;
 long ccc=0;
-
+uint8_t xxx;
 uint8_t buff[6]= {0};
 	
 	
-
+uint8_t ms, ms10,ms100,sec,min,entprell, state;
 
 uint32_t Pressure;
 uint32_t Temperature;
+
+uint8_t measurement, update;
 
 uint8_t bit;
 
@@ -125,7 +128,7 @@ uint8_t DPS310_read(uint8_t reg)
 		if(TWIGetStatus() != 0x40)return 5;
 		result=TWIReadNACK();
 		TWIStop();
-		_delay_ms(2);
+		_delay_ms(1);
 	return result;	
 //Daten zurueckgeben
 }
@@ -141,7 +144,7 @@ uint8_t DPS310_write(uint8_t reg, uint8_t data)
 		if(TWIGetStatus() != 0x28)return 44;
 		TWIStop();
 		
-		_delay_ms(2);
+		_delay_ms(1);
 	return 0;	
 	
 	//Daten zurueckgeben
@@ -316,7 +319,7 @@ uint16_t vor_komma(uint32_t value)
 	return value/100;
 	
 }
-uint8_t nach_komma(uint32_t value)
+uint16_t nach_komma(uint32_t value)
 {
 	uint8_t temp;
 	temp = value/100;
@@ -358,8 +361,88 @@ uint32_t DPS310_get_pres(uint8_t t_ovrs, uint8_t p_ovrs)
 	prs_comp=m_C00+prs_sc*(m_C10+prs_sc*(m_C20+(prs_sc*m_C30)))+temp_sc*m_C01+temp_sc*prs_sc*(m_C11+(prs_sc*m_C21));
 	return prs_comp; //2505 entspricht 25,5 Grad
 }
+
+ISR (TIMER1_COMPA_vect)
+{
+	ms10++;
+	if(entprell != 0)entprell--;
+	if(ms10==10)	//10ms
+	{
+		ms10=0;
+		ms100++;
+		measurement++;
+	}
+    if(ms100==10)	//100ms
+	{
+		ms100=0;
+		sec++;
+	}
+	if(sec==60)	//Minute
+	{
+		
+		sec=0;
+		min++;
+		xxx++;
+		if(xxx>10)
+		{
+		xxx=0;
+		
+		}
+	}
+}
+
+void graph(uint16_t posy, uint8_t index)
+{
+		static uint16_t ycorr_old = 0;
+		static uint16_t posx = 0;
+		uint16_t val = posy/2;
+		static uint16_t ycorr_base = 0;
+		
+		if(posx > 320)
+		{
+			posx=0;
+			ili9341_clear(BLACK);//fill screen with black colour
+			
+		}
+		
+		if(posx == 0)
+		{
+			while((ycorr_base-val) != 120)
+			{
+				ycorr_base++;
+			}
+		}
+		
+		ili9341_drawLine(posx-1, ycorr_old, posx, ycorr_base-val, YELLOW);
+		ycorr_old = ycorr_base-val;
+		posx++;
+		ili9341_setcursor(10,100);
+		printf("Posx: %d", posx);
+		ili9341_setcursor(10,150);
+		printf("-val: %d", ycorr_base-val);
+		
+		ili9341_setcursor(10,0);
+		printf("T: %d.%1.2d", vor_komma(val), nach_komma(val));
+}
+
 int main(void)
 {
+	//Timer 1 Configuration
+	OCR1A = 0x009C;	//OCR1A = 0x3D08;==1sec
+	
+    TCCR1B |= (1 << WGM12);
+    // Mode 4, CTC on OCR1A
+
+    TIMSK1 |= (1 << OCIE1A);
+    //Set interrupt on compare match
+
+    TCCR1B |= (1 << CS12) | (1 << CS10);
+    // set prescaler to 1024 and start the timer
+
+    sei();
+    // enable interrupts
+	
+	
 	init_ili9341();
 	//display_init();//display initial data
 	yy=240;
@@ -370,39 +453,48 @@ int main(void)
 	
 	value=0;
 	rdy=0;
-	TWIInit();
 	
+	ms=0;
+	ms10=0;
+	ms100=0;
+	sec=0;
+	min=0;
+	measurement=0;
+	xxx=0;
+	TWIInit();
+	update=0;
 	temp_oversampling=1;
 	prs_oversampling=4;
 	
 	
 	DPS310_init(HIGH);
 	
+	/*   320x240     */
 	
-
+	ili9341_drawFastHLine(0,239, 320, YELLOW);
+	ili9341_drawFastVLine(0,0, 240, YELLOW);
+	
+	
 	while(1)
 	{
 				
 		id = DPS310_read(PRODUCT_ID);
 		meas = DPS310_read(MEAS_CFG);
 		
-		if(TEMP_READY_CHECK)Temperature=DPS310_get_temp(temp_oversampling);
+		if(TEMP_READY_CHECK)
+		{
+			
+			Temperature=DPS310_get_temp(temp_oversampling);
+		
+			graph(Temperature, 1);
+			
+		}
+	
 		if(PRES_READY_CHECK)Pressure=DPS310_get_pres(temp_oversampling, prs_oversampling);
 		
-		ili9341_setcursor(0,200);
-		printf("Temperature: %d.%1.2d", vor_komma(Temperature), nach_komma(Temperature));
-		ili9341_setcursor(0,220);
-		printf("Pressure: %d.%1.2d", vor_komma(Pressure), nach_komma(Pressure));
 		
-
-		
-		//printcoeffs();
-	
-		
-	
-
-	_delay_ms(10);
-		
+		ili9341_setcursor(200,0);
+		printf("P: %d.%1.2d", vor_komma(Pressure), nach_komma(Pressure));
 	
 	}//end of while
 
