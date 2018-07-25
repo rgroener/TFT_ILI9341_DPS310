@@ -9,6 +9,7 @@
 #include "ili9341gfx.h"
 #include <avr/pgmspace.h>
 #include "grn_TWI.h"
+#include <avr/interrupt.h>
 
 #define DPS310_W 0xee
 #define DPS310_R 0xef
@@ -90,7 +91,7 @@ uint8_t meas=0;
 uint8_t id=0;
 uint8_t pres_ovs, temp_ovs;
 
-
+uint8_t ms, ms10,ms100,sec,min,entprell, state;
 float ttt=0;
 long ccc=0;
 
@@ -379,7 +380,26 @@ uint32_t DPS310_get_pres(uint8_t t_ovrs, uint8_t p_ovrs)
 		prs_comp=m_C00+prs_sc*(m_C10+prs_sc*(m_C20+(prs_sc*m_C30)))+temp_sc*m_C01+temp_sc*prs_sc*(m_C11+(prs_sc*m_C21));
 		return prs_comp; //2505 entspricht 25,5 Grad
 }
-
+ISR (TIMER1_COMPA_vect)
+{
+	ms10++;
+	if(entprell != 0)entprell--;
+	if(ms10==10)	//10ms
+	{
+		ms10=0;
+		ms100++;
+	}
+    if(ms100==10)	//100ms
+	{
+		ms100=0;
+		sec++;
+	}
+	if(sec==60)	//Minute
+	{
+		sec=0;
+		min++;
+	}
+}
 
 uint16_t vor_komma(uint32_t value)
 {
@@ -409,7 +429,20 @@ int main(void)
 	value=0;
 	rdy=0;
 	TWIInit();
+	//Timer 1 Configuration
+	OCR1A = 0x009C;	//OCR1A = 0x3D08;==1sec
 	
+    TCCR1B |= (1 << WGM12);
+    // Mode 4, CTC on OCR1A
+
+    TIMSK1 |= (1 << OCIE1A);
+    //Set interrupt on compare match
+
+    TCCR1B |= (1 << CS12) | (1 << CS10);
+    // set prescaler to 1024 and start the timer
+
+    sei();
+    // enable interrupts
 	
 	DPS310_init(HIGH);
 	
@@ -423,6 +456,8 @@ int main(void)
 		
 		ili9341_setcursor(0,200);
 		printf("Temperature: %d.%1.2d", vor_komma(Temperature), nach_komma(Temperature));
+		ili9341_setcursor(0,100);
+		printf("Temperature: %d", sec);
 		ili9341_setcursor(0,220);
 		printf("Pressure: %d.%1.2d", vor_komma(Pressure), nach_komma(Pressure));
 	
