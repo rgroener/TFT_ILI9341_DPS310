@@ -38,6 +38,7 @@
 #define LOW 1
 #define MID 2
 #define HIGH 3
+#define ULTRA 4
 
 
 //Compensation Scale Factors (Oversampling)
@@ -93,11 +94,15 @@ uint8_t pres_ovs, temp_ovs;
 
 uint8_t ms, ms10,ms100,sec,min,entprell, state;
 
-
+uint16_t tt=0;
+double pp=0;
 uint8_t buff[6]= {0};
 
-uint32_t Pressure;
-uint32_t Temperature;
+double Pressure;
+double Temperature;
+uint32_t altitude;
+
+uint16_t posx, posy, posy_alt;
 
 uint8_t bit;
 
@@ -237,6 +242,13 @@ void DPS310_init(uint8_t acc)
 						temp_ovs = 1;
 						pres_ovs = 64;
 						break;
+			case ULTRA:	DPS310_write(PRS_CFG, 0xF7);//4 messungen / sek   64 fach ovs
+						DPS310_write(TMP_CFG, 0xD7);//externer sens  4 messung / sek  single ovs
+						DPS310_write(CFG_REG, 0x0C);//p bit shift on 
+						DPS310_write(MEAS_CFG, 0x07);//cont temp and pres mess
+						temp_ovs = 128;
+						pres_ovs = 128;
+						break;
 			
 		}
 		//Korrekturwerte für falsche Temperaturwerte (2-fach normaler Temp Wert)
@@ -263,7 +275,7 @@ uint32_t DPS310_get_sc_temp(uint8_t oversampling)
 	return temp_raw; 
 }
 
-int32_t DPS310_get_temp(uint8_t oversampling)
+double DPS310_get_temp(uint8_t oversampling)
 {
 	long temp_raw=0;
 	double temp_sc=0;
@@ -295,7 +307,7 @@ int32_t DPS310_get_temp(uint8_t oversampling)
 			return temp_comp*100; //2505 entspricht 25,5 Grad
 }
 
-uint32_t DPS310_get_pres(uint8_t t_ovrs, uint8_t p_ovrs)
+double DPS310_get_pres(uint8_t t_ovrs, uint8_t p_ovrs)
 {
 	long temp_raw;
 	double temp_sc;
@@ -369,11 +381,13 @@ ISR (TIMER1_COMPA_vect)
 		min++;
 	}
 }
-uint8_t calcalt(uint8_t actpres)
+uint16_t calcalt(double press, double temp)
 {
-	
-	
-	return 0;
+	const float p0 = 101325;     // Pressure at sea level (Pa)
+	double alt=0;
+	alt = (float)44330 * (1 - pow(((float) press/p0), 0.190222560396));
+	// Add this into loop(), after you've calculated the pressure
+  return alt*100;//*100 um stellen von Komma nicht zu verlieren
 }
 
 uint16_t vor_komma(uint32_t value)
@@ -389,7 +403,10 @@ uint8_t nach_komma(uint32_t value)
 	
 	
 }
-
+void graph(uint16_t value)
+{
+	
+	}
 int main(void)
 {
 	init_ili9341();
@@ -403,6 +420,8 @@ int main(void)
 	pres_ovs=0;
 	value=0;
 	rdy=0;
+	altitude=0;
+	tt=0;
 	TWIInit();
 	//Timer 1 Configuration
 	OCR1A = 0x009C;	//OCR1A = 0x3D08;==1sec
@@ -416,18 +435,25 @@ int main(void)
     // enable interrupts
 	
 	
-	DPS310_init(LOW);
+	DPS310_init(ULTRA);
 	
 	while(1)
 	{
 				
 		if(TEMP_READY_CHECK)Temperature=DPS310_get_temp(temp_ovs);
-		if(PRES_READY_CHECK)Pressure=DPS310_get_pres(temp_ovs, pres_ovs);
+		if(PRES_READY_CHECK)
+		{
+			Pressure=DPS310_get_pres(temp_ovs, pres_ovs);
+			tt++;
+		}
+		altitude = calcalt(Pressure, Temperature);
 		
+		ili9341_setcursor(0,30);
+		printf("Altidude: %d", tt);
 		ili9341_setcursor(0,200);
-		printf("Temperature: %d.%1.2d", vor_komma(Temperature), nach_komma(Temperature));
+		printf("Temperature: %d.%d", vor_komma(Temperature), nach_komma(Temperature));
 		ili9341_setcursor(0,100);
-		printf("Temperature: %d", sec);
+		printf("altitude:  %d.%1.2d", vor_komma(altitude), nach_komma(altitude));
 		ili9341_setcursor(0,220);
 		printf("Pressure: %d.%1.2d", vor_komma(Pressure), nach_komma(Pressure));
 	
