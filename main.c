@@ -92,13 +92,9 @@ uint8_t id=0;
 uint8_t pres_ovs, temp_ovs;
 
 uint8_t ms, ms10,ms100,sec,min,entprell, state;
-float ttt=0;
-long ccc=0;
+
 
 uint8_t buff[6]= {0};
-	
-	
-
 
 uint32_t Pressure;
 uint32_t Temperature;
@@ -124,7 +120,7 @@ uint8_t DPS310_read(uint8_t reg)
 		if(TWIGetStatus() != 0x40)return 5;
 		result=TWIReadNACK();
 		TWIStop();
-		_delay_ms(2);
+		_delay_us(30);
 	return result;	
 //Daten zurueckgeben
 }
@@ -140,7 +136,7 @@ uint8_t DPS310_write(uint8_t reg, uint8_t data)
 		if(TWIGetStatus() != 0x28)return 44;
 		TWIStop();
 		
-		_delay_ms(2);
+		_delay_us(30);
 	return 0;	
 	
 	//Daten zurueckgeben
@@ -163,9 +159,7 @@ int16_t DPS310_readCoeffs(void)
 	 
     m_C0=(((int)buffer[0]<<8)|buffer[1])>>4;
     m_C0=m_C0/2;
-   
-    //m_C1=((((int)buffer[1]<<8)|buffer[2])<<4)>>4;
-    
+      
     m_C1 = (((uint32_t)buffer[1] & 0x0F) << 8) | (uint32_t)buffer[2];
 	if(m_C1 & ((uint32_t)1 << 11))
 	{
@@ -190,29 +184,7 @@ int16_t DPS310_readCoeffs(void)
        
     return 0;
 }
-void printcoeffs(void)
-{
-	
-	uint8_t xxx=150;
-	ili9341_setcursor(xxx,0);
-	printf("1= %d", m_C0);
-	ili9341_setcursor(xxx,20);
-	printf("2= %03d", m_C1);
-	ili9341_setcursor(xxx,40);
-	printf("3= %ld", m_C00);
-	ili9341_setcursor(xxx,60);
-	printf("4= %ld", m_C10);
-	ili9341_setcursor(xxx,80);
-	printf("5= %d", m_C01);
-	ili9341_setcursor(xxx,100);
-	printf("6= %d", m_C11);
-	ili9341_setcursor(xxx,120);
-	printf("7= %d", m_C20);
-	ili9341_setcursor(xxx,140);
-	printf("8= %d", m_C21);
-	ili9341_setcursor(xxx,160);
-	printf("9= %d", m_C30);
-}
+
 
 void DPS310_sreset(void)
 {
@@ -267,14 +239,14 @@ void DPS310_init(uint8_t acc)
 						break;
 			
 		}
-		//korrekturwerte für Registe bei falschen Tempwerten gemäss github Library arduino
-		//nicht sicher ob diese gebraucht werden...
-		/*
+		//Korrekturwerte für falsche Temperaturwerte (2-fach normaler Temp Wert)
+		// Quelle: https://github.com/Infineon/DPS310-Pressure-Sensor
+		
 		DPS310_write(0x0E, 0xA5);
 		DPS310_write(0x0F, 0x96);
 		DPS310_write(0x62, 0x02);
 		DPS310_write(0x0E, 0x00);
-		DPS310_write(0x0F, 0x00);*/
+		DPS310_write(0x0F, 0x00);
 	}
 }
 uint32_t DPS310_get_sc_temp(uint8_t oversampling)
@@ -287,9 +259,7 @@ uint32_t DPS310_get_sc_temp(uint8_t oversampling)
 			
 	temp_raw=((((long)buff[0]<<8)|buff[1])<<8)|buff[2];
 	temp_raw=(temp_raw<<8)>>8;
-	
-	
-			
+				
 	return temp_raw; 
 }
 
@@ -324,7 +294,6 @@ int32_t DPS310_get_temp(uint8_t oversampling)
 			
 			return temp_comp*100; //2505 entspricht 25,5 Grad
 }
-
 
 uint32_t DPS310_get_pres(uint8_t t_ovrs, uint8_t p_ovrs)
 {
@@ -400,6 +369,12 @@ ISR (TIMER1_COMPA_vect)
 		min++;
 	}
 }
+uint8_t calcalt(uint8_t actpres)
+{
+	
+	
+	return 0;
+}
 
 uint16_t vor_komma(uint32_t value)
 {
@@ -431,23 +406,18 @@ int main(void)
 	TWIInit();
 	//Timer 1 Configuration
 	OCR1A = 0x009C;	//OCR1A = 0x3D08;==1sec
-	
-    TCCR1B |= (1 << WGM12);
+	TCCR1B |= (1 << WGM12);
     // Mode 4, CTC on OCR1A
-
     TIMSK1 |= (1 << OCIE1A);
     //Set interrupt on compare match
-
     TCCR1B |= (1 << CS12) | (1 << CS10);
     // set prescaler to 1024 and start the timer
-
     sei();
     // enable interrupts
 	
-	DPS310_init(HIGH);
 	
+	DPS310_init(LOW);
 	
-
 	while(1)
 	{
 				
