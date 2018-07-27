@@ -209,7 +209,7 @@ void init_ili9341(void)
 	_delay_ms(2);
 	ili9341_settextcolour(YELLOW,BLACK);
 	ili9341_setcursor(0,0);
-	ili9341_settextsize(2);
+	ili9341_settextsize(3);
 }
 void DPS310_init(uint8_t acc)
 {
@@ -442,6 +442,7 @@ int main(void)
 	
 	
 	DPS310_init(ULTRA);
+	_delay_ms(30);
 	
 	while(1)
 	{
@@ -452,17 +453,17 @@ int main(void)
 			Pressure=DPS310_get_pres(temp_ovs, pres_ovs);
 			tt++;
 		}
-		altitude = calcalt(Pressure, qnh);
+		
 		
 		ili9341_setcursor(10,30);
 		printf("Messungen: %d", tt);
-		ili9341_setcursor(10,200);
-		printf("T: %d.%d", vor_komma(Temperature), nach_komma(Temperature));
-		ili9341_setcursor(10,100);
-		printf("A:  %d.%2.2d", vor_komma(altitude), nach_komma(altitude));
-		ili9341_setcursor(10,220);
-		printf("P: %d.%1.2d", vor_komma(Pressure), nach_komma(Pressure));
-	
+		ili9341_setcursor(10,80);
+		printf("T: %d.%d\370 C", vor_komma(Temperature), nach_komma(Temperature));
+		ili9341_setcursor(10,120);
+		printf("A: %d.%2.2d m", vor_komma(altitude), nach_komma(altitude));
+		ili9341_setcursor(10,170);
+		printf("P: %d.%1.2d hPa", vor_komma(Pressure), nach_komma(Pressure));
+	altitude = calcalt(Pressure, qnh);
 		graph(Pressure);
 	
 	}//end of while
