@@ -101,6 +101,7 @@ uint8_t buff[6]= {0};
 double Pressure;
 double Temperature;
 uint32_t altitude;
+uint32_t qnh;
 
 uint16_t posx, posy, posy_alt;
 
@@ -381,13 +382,10 @@ ISR (TIMER1_COMPA_vect)
 		min++;
 	}
 }
-uint16_t calcalt(double press, double temp)
+long calcalt(double press, uint32_t pressealevel)
 {
-	const float p0 = 101325;     // Pressure at sea level (Pa)
-	double alt=0;
-	alt = (float)44330 * (1 - pow(((float) press/p0), 0.190222560396));
-	// Add this into loop(), after you've calculated the pressure
-  return alt*100;//*100 um stellen von Komma nicht zu verlieren
+   return 100*(44330 * (1 - pow((double) press / pressealevel, 0.1902226)));
+	//*100 um stellen von Komma nicht zu verlieren
 }
 
 uint16_t vor_komma(uint32_t value)
@@ -405,8 +403,15 @@ uint8_t nach_komma(uint32_t value)
 }
 void graph(uint16_t value)
 {
+	static uint16_t posy=0;
+	static uint16_t posx=0;
+	static uint16_t posy_old=0;
 	
-	}
+	posy = 97000-value;
+	ili9341_drawLine(posx-1, posy_old, posx, posy, RED);
+	posx++;
+	posy_old=posy;
+}
 int main(void)
 {
 	init_ili9341();
@@ -422,6 +427,7 @@ int main(void)
 	rdy=0;
 	altitude=0;
 	tt=0;
+	qnh=101525;
 	TWIInit();
 	//Timer 1 Configuration
 	OCR1A = 0x009C;	//OCR1A = 0x3D08;==1sec
@@ -446,17 +452,18 @@ int main(void)
 			Pressure=DPS310_get_pres(temp_ovs, pres_ovs);
 			tt++;
 		}
-		altitude = calcalt(Pressure, Temperature);
+		altitude = calcalt(Pressure, qnh);
 		
-		ili9341_setcursor(0,30);
-		printf("Altidude: %d", tt);
-		ili9341_setcursor(0,200);
-		printf("Temperature: %d.%d", vor_komma(Temperature), nach_komma(Temperature));
-		ili9341_setcursor(0,100);
-		printf("altitude:  %d.%1.2d", vor_komma(altitude), nach_komma(altitude));
-		ili9341_setcursor(0,220);
-		printf("Pressure: %d.%1.2d", vor_komma(Pressure), nach_komma(Pressure));
+		ili9341_setcursor(10,30);
+		printf("Messungen: %d", tt);
+		ili9341_setcursor(10,200);
+		printf("T: %d.%d", vor_komma(Temperature), nach_komma(Temperature));
+		ili9341_setcursor(10,100);
+		printf("A:  %d.%2.2d", vor_komma(altitude), nach_komma(altitude));
+		ili9341_setcursor(10,220);
+		printf("P: %d.%1.2d", vor_komma(Pressure), nach_komma(Pressure));
 	
+		graph(Pressure);
 	
 	}//end of while
 
