@@ -98,8 +98,8 @@ uint16_t tt=0;
 double pp=0;
 uint8_t buff[6]= {0};
 
-double Pressure;
-double Temperature;
+long Pressure;
+long Temperature;
 uint32_t altitude;
 uint32_t qnh;
 
@@ -276,7 +276,7 @@ uint32_t DPS310_get_sc_temp(uint8_t oversampling)
 	return temp_raw; 
 }
 
-double DPS310_get_temp(uint8_t oversampling)
+long DPS310_get_temp(uint8_t oversampling)
 {
 	long temp_raw=0;
 	double temp_sc=0;
@@ -401,16 +401,26 @@ uint8_t nach_komma(uint32_t value)
 	
 	
 }
-void graph(uint16_t value)
+long graph(uint16_t value)
 {
 	static uint16_t posy=0;
 	static uint16_t posx=0;
 	static uint16_t posy_old=0;
-	
-	posy = 97000-value;
+	static long corr=0;	//correcture to keep graph on display
+	if(posx==0)
+	{
+		corr = value+120;
+	}
+	posy = corr-value;
 	ili9341_drawLine(posx-1, posy_old, posx, posy, RED);
 	posx++;
-	posy_old=posy;
+	if(posx>=320)//reached end of screen
+	{
+		posx=0;
+		ili9341_clear(BLACK);//fill screen with black colour
+	}else posy_old=posy;
+	
+	return corr;
 }
 int main(void)
 {
@@ -455,16 +465,16 @@ int main(void)
 		}
 		
 		
-		ili9341_setcursor(10,30);
-		printf("Messungen: %d", tt);
-		ili9341_setcursor(10,80);
+		ili9341_setcursor(10,200);
+		printf("Messungen: %ld", Temperature);
+		/*ili9341_setcursor(10,80);
 		printf("T: %d.%d\370 C", vor_komma(Temperature), nach_komma(Temperature));
 		ili9341_setcursor(10,120);
 		printf("A: %d.%2.2d m", vor_komma(altitude), nach_komma(altitude));
 		ili9341_setcursor(10,170);
 		printf("P: %d.%1.2d hPa", vor_komma(Pressure), nach_komma(Pressure));
-	altitude = calcalt(Pressure, qnh);
-		graph(Pressure);
+	altitude = calcalt(Pressure, qnh);*/
+		graph(Temperature);
 	
 	}//end of while
 
